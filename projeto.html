@@ -235,7 +235,7 @@
       <div class="logo-text">RADARALERJ</div>
     </a>
     <div class="nav-actions">
-      <a href="projetos.html"><button class="btn-ghost-sm">← Voltar</button></a>
+      <a href="index.html"><button class="btn-ghost-sm">← Voltar</button></a>
       <button class="btn-primary-sm" @click="abrirAlerj()">Ver na ALERJ &#8599;</button>
     </div>
   </nav>
@@ -244,7 +244,7 @@
   <div class="breadcrumb">
     <a href="index.html">Inicio</a>
     <span class="bc-sep">/</span>
-    <a href="projetos.html">Projetos</a>
+    <a href="index.html">Projetos</a>
     <span class="bc-sep">/</span>
     <span x-text="projeto.numero"></span>
   </div>
@@ -380,7 +380,7 @@
         <div class="card-body">
           <div class="tags-wrap">
             <template x-for="tag in projeto.tags" :key="tag">
-              <a :href="'projetos.html?q=' + tag" class="tag" x-text="tag"></a>
+              <a :href="'index.html?q=' + tag" class="tag" x-text="tag"></a>
             </template>
           </div>
         </div>
@@ -415,7 +415,7 @@
           <div class="dep-info">
             <div class="dep-name" x-text="projeto.autor"></div>
             <div class="dep-party" x-text="projeto.autorPartido"></div>
-            <a href="projetos.html" class="dep-link">Ver todos os projetos &#8594;</a>
+            <a href="index.html" class="dep-link">Ver todos os projetos &#8594;</a>
           </div>
         </div>
         <div class="dep-stats">
@@ -453,56 +453,110 @@
   </div><!-- .project-body -->
 
   <script>
+    const SB_URL = 'https://rvjwmqmasqsuiupwxeyj.supabase.co'
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2andtcW1hc3FzdWl1cHd4ZXlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDQ3NjIsImV4cCI6MjA5MDAyMDc2Mn0.vbCodemYd2_S3sBY_dhpiuIUUKCNz_QMKZLxzEh38ng'
+
+    function sbHeaders() {
+      return { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+    }
+
+    function badge(texto) {
+      if (!texto) return 'pend'
+      const t = texto.toLowerCase()
+      if (['aprovado','sancionado','promulgado','publicado no d'].some(k => t.includes(k))) return 'ok'
+      if (['arquivado','retirado','prejudicado','vetado'].some(k => t.includes(k))) return 'arch'
+      return 'pend'
+    }
+
+    const STATUS_LABEL = { ok: 'Aprovado', arch: 'Arquivado', pend: 'Em tramitação' }
+    const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+
+    function fmtDate(d) {
+      if (!d) return '—'
+      const [y, m, day] = d.split('-')
+      return `${day} ${MESES[parseInt(m) - 1]} ${y}`
+    }
+
+    function iniciais(nome) {
+      const parts = (nome || '').split(' ')
+      if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      return nome ? nome.slice(0, 2).toUpperCase() : '—'
+    }
+
+    function extractTags(ementa) {
+      if (!ementa) return []
+      const words = (ementa.toLowerCase().match(/\b[a-záàâãéèêíïóôõúüç]{6,}\b/g) || [])
+      const seen = new Set()
+      const tags = []
+      for (const w of words) {
+        if (!seen.has(w)) { seen.add(w); tags.push(w) }
+        if (tags.length >= 8) break
+      }
+      return tags
+    }
+
+    function serializeDetail(p) {
+      const autores = (p.autores || []).map(a => a.nome)
+      const comissoes = (p.comissoes || []).map(c => c.nome)
+      const atualizacoes = (p.projeto_atualizacoes || []).sort((a, b) => (a.data_evento || '').localeCompare(b.data_evento || ''))
+
+      const timeline = atualizacoes.map((u, i) => ({
+        label: (u.descricao || '').slice(0, 120),
+        data: fmtDate(u.data_evento),
+        classe: i === atualizacoes.length - 1 ? 'current' : 'done',
+        desc: ''
+      }))
+
+      const bc = badge(p.ultima_atualizacao_texto)
+      const autorNome = autores[0] || p.autores_texto || '—'
+
+      return {
+        id: p.id,
+        numero: p.numero,
+        titulo: p.ementa || '—',
+        status: STATUS_LABEL[bc],
+        badgeClass: bc,
+        tema: comissoes[0] || '—',
+        autor: autorNome,
+        autorIniciais: iniciais(autorNome),
+        autorPartido: '—',
+        autorTotalProjetos: '—',
+        autorAprovados: '—',
+        autorEmTramitacao: '—',
+        dataApresentacao: fmtDate(p.data_publicacao),
+        dataAtualizacao: fmtDate(p.ultima_atualizacao_data),
+        dataVotacao: null,
+        comissao: comissoes[0] || '—',
+        legislatura: 'ALERJ',
+        etapaAtual: (p.ultima_atualizacao_texto || '').slice(0, 80) || '—',
+        ementa: p.ementa || '—',
+        votacao: null,
+        timeline,
+        documentos: p.fonte_url ? [{ nome: 'Ver projeto na ALERJ', meta: p.fonte_url }] : [],
+        tags: extractTags(p.ementa),
+        relacionados: [],
+        fonteUrl: p.fonte_url || ''
+      }
+    }
+
     function projetoApp() {
       return {
         copiado: false,
+        loading: true,
+        erro: false,
 
-        // Dados mock — quando o back estiver pronto,
-        // faca fetch('/api/projetos/' + id) no init()
         projeto: {
-          id: 1,
-          numero: 'PL 2847/2024',
-          titulo: 'Institui programa estadual de cameras em viaturas policiais no estado do Rio de Janeiro',
-          status: 'Aprovado',
-          badgeClass: 'ok',
-          tema: 'Seguranca',
-          autor: 'Dep. Carlos Silva',
-          autorIniciais: 'CS',
-          autorPartido: 'PDT · Rio de Janeiro',
-          autorTotalProjetos: 34,
-          autorAprovados: 12,
-          autorEmTramitacao: 18,
-          dataApresentacao: '12 mar 2024',
-          dataAtualizacao: '02 mai 2024',
-          dataVotacao: 'Plenario · 15 abr 2024',
-          comissao: 'Comissao de Seguranca Publica',
-          legislatura: '12a Legislatura',
-          etapaAtual: 'Aguardando sancao',
-          ementa: 'Institui o Programa Estadual de Cameras Embarcadas em Viaturas Policiais (PECEVP), com o objetivo de aumentar a transparencia, o controle e a responsabilizacao nas acoes das forcas de seguranca do estado do Rio de Janeiro. O programa preve a instalacao de cameras de video em todas as viaturas da Policia Militar e Policia Civil estaduais, com armazenamento em nuvem por periodo minimo de 90 dias e acesso regulamentado pela Ouvidoria de Policia.',
-          votacao: { sim: 52, nao: 8, abstencao: 3, total: 63 },
-          timeline: [
-            { label: 'Apresentado na ALERJ', data: '12 mar 2024', classe: 'done', desc: 'Protocolo no 2847/2024' },
-            { label: 'Comissao de Seguranca Publica', data: '28 mar 2024', classe: 'done', desc: 'Parecer favoravel por 7 votos a 1' },
-            { label: 'Comissao de Constituicao e Justica', data: '08 abr 2024', classe: 'done', desc: 'Aprovado por unanimidade' },
-            { label: 'Plenario', data: '15 abr 2024', classe: 'current', desc: '52 votos a favor, 8 contra, 3 abstencoes' },
-            { label: 'Sancao do Governador', data: 'Previsto para mai 2024', classe: 'pending', desc: '' },
-          ],
-          documentos: [
-            { nome: 'Texto integral do projeto', meta: 'PDF · 142 KB · 12 mar 2024' },
-            { nome: 'Parecer da Comissao de Seguranca', meta: 'PDF · 89 KB · 28 mar 2024' },
-            { nome: 'Parecer da CCJ', meta: 'PDF · 64 KB · 08 abr 2024' },
-            { nome: 'Ata da votacao em plenario', meta: 'PDF · 210 KB · 15 abr 2024' },
-          ],
-          tags: ['seguranca publica', 'policia militar', 'policia civil', 'cameras', 'transparencia', 'controle externo'],
-          relacionados: [
-            { id: 2, numero: 'PL 3012/2024', titulo: 'Regulamentacao do uso de cameras de vigilancia em espacos publicos municipais' },
-            { id: 3, numero: 'PL 1923/2024', titulo: 'Criacao de novos leitos de UTI em hospitais estaduais do Rio de Janeiro' },
-            { id: 7, numero: 'PL 0512/2023', titulo: 'Programa habitacional para familias de baixa renda em areas de risco' },
-          ]
+          numero: '...', titulo: '', status: '', badgeClass: 'pend',
+          tema: '', autor: '', autorIniciais: '—', autorPartido: '—',
+          autorTotalProjetos: '—', autorAprovados: '—', autorEmTramitacao: '—',
+          dataApresentacao: '—', dataAtualizacao: '—', dataVotacao: null,
+          comissao: '—', legislatura: 'ALERJ', etapaAtual: '—',
+          ementa: '', votacao: null, timeline: [], documentos: [],
+          tags: [], relacionados: [], fonteUrl: ''
         },
 
         abrirAlerj() {
-          window.open('https://www.alerj.rj.gov.br', '_blank')
+          window.open(this.projeto.fonteUrl || 'https://www.alerj.rj.gov.br', '_blank')
         },
 
         copiarLink() {
@@ -514,22 +568,30 @@
 
         compartilhar() {
           if (navigator.share) {
-            navigator.share({
-              title: this.projeto.numero + ' — RadarAlerj',
-              text: this.projeto.titulo,
-              url: window.location.href
-            })
+            navigator.share({ title: this.projeto.numero + ' — RadarAlerj', text: this.projeto.titulo, url: window.location.href })
           } else {
             this.copiarLink()
           }
         },
 
-        init() {
+        async init() {
           AOS.init({ once: true, offset: 40, easing: 'ease-out-quart' })
-          // Quando o back estiver pronto:
-          // const params = new URLSearchParams(window.location.search)
-          // const id = params.get('id')
-          // fetch(`/api/projetos/${id}`).then(r => r.json()).then(d => this.projeto = d)
+
+          const params = new URLSearchParams(window.location.search)
+          const id = params.get('id')
+          if (!id) { this.loading = false; this.erro = true; return }
+
+          try {
+            const url = `${SB_URL}/rest/v1/projetos?id=eq.${id}&select=*,autores!projeto_autores(nome),comissoes!projeto_comissoes(nome),projeto_atualizacoes(descricao,data_evento)`
+            const res = await fetch(url, { headers: sbHeaders() })
+            const data = await res.json()
+            if (!data.length) throw new Error('Projeto não encontrado')
+            this.projeto = serializeDetail(data[0])
+          } catch (e) {
+            console.error(e)
+            this.erro = true
+          }
+          this.loading = false
         }
       }
     }

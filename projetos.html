@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Projetos — RadarAlerj</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0C2A5E; --navy-mid: #1A3E8A; --blue: #3A5EA8;
+      --blue-light: #E8F0FB; --blue-pale: #F0F4FB; --blue-frost: #F7F9FD;
+      --border: #dde4f0; --text-muted: #4A6080; --text-faint: #7A90B5;
+      --sidebar-w: 260px; --preview-w: 380px;
+    }
+    html, body { height: 100%; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--blue-frost); color: var(--navy); overflow-x: hidden; }
+    [x-cloak] { display: none !important; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── NAV ── */
+    .nav {
+      height: 54px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 200;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 8px; }
+    .logo-text { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; letter-spacing: 0.07em; color: var(--navy); }
+    .nav-search {
+      flex: 1; max-width: 480px; margin: 0 2rem;
+      display: flex; align-items: center; gap: 8px;
+      background: var(--blue-frost); border: 1px solid var(--border);
+      border-radius: 6px; padding: 7px 14px; transition: border-color 0.2s;
+    }
+    .nav-search:focus-within { border-color: var(--blue); background: #fff; }
+    .nav-search input { border: none; background: none; outline: none; font-size: 13px; color: var(--navy); font-family: 'DM Mono', monospace; flex: 1; }
+    .nav-search input::placeholder { color: var(--text-faint); }
+    .search-ic { color: var(--blue); font-size: 15px; flex-shrink: 0; }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .nav-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); }
+    .btn-back { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text-muted); border: 1px solid var(--border); padding: 6px 14px; border-radius: 4px; cursor: pointer; background: #fff; transition: border-color 0.2s; }
+    .btn-back:hover { border-color: var(--blue); color: var(--navy); }
+
+    /* ── LAYOUT ── */
+    .app { display: flex; height: calc(100vh - 54px); overflow: hidden; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: #fff; overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .sidebar-header { padding: 1.2rem 1.2rem 0.8rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .sidebar-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: var(--blue); text-transform: uppercase; }
+    .clear-btn { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-faint); cursor: pointer; background: none; border: none; padding: 2px 0; }
+    .clear-btn:hover { color: var(--navy); }
+
+    .filter-group { border-bottom: 1px solid var(--border); }
+    .filter-group-head {
+      padding: 0.9rem 1.2rem; display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; user-select: none; transition: background 0.15s;
+    }
+    .filter-group-head:hover { background: var(--blue-frost); }
+    .filter-group-label { font-size: 12px; font-weight: 500; color: var(--navy); }
+    .filter-arrow { font-size: 10px; color: var(--text-faint); transition: transform 0.2s; }
+    .filter-arrow.open { transform: rotate(180deg); }
+    .filter-options { padding: 0.4rem 1.2rem 0.8rem; display: flex; flex-direction: column; gap: 4px; }
+
+    .filter-opt {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; border-radius: 5px; cursor: pointer;
+      transition: background 0.15s; user-select: none;
+    }
+    .filter-opt:hover { background: var(--blue-pale); }
+    .filter-opt.active { background: var(--blue-light); }
+    .filter-opt-check {
+      width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0;
+      border: 1.5px solid var(--border); background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .filter-opt.active .filter-opt-check { background: var(--navy); border-color: var(--navy); }
+    .check-mark { color: #fff; font-size: 9px; line-height: 1; }
+    .filter-opt-label { font-size: 12px; color: var(--text-muted); flex: 1; }
+    .filter-opt.active .filter-opt-label { color: var(--navy); font-weight: 500; }
+    .filter-opt-count { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-faint); }
+
+    .active-filters { padding: 0.8rem 1.2rem; display: flex; flex-wrap: wrap; gap: 5px; border-bottom: 1px solid var(--border); }
+    .active-tag { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; background: var(--blue-light); color: var(--navy-mid); border-radius: 3px; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+    .active-tag:hover { background: #d0dcf5; }
+    .tag-x { font-size: 11px; color: var(--blue); }
+
+    /* ── LISTA ── */
+    .list-pane {
+      flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+      min-width: 0;
+    }
+    .list-toolbar {
+      padding: 0.8rem 1.2rem; background: #fff; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .list-info { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); }
+    .list-info strong { color: var(--navy); }
+    .sort-select { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; cursor: pointer; outline: none; }
+
+    .result-item {
+      padding: 1rem 1.2rem; background: #fff; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.15s; position: relative;
+    }
+    .result-item:hover { background: var(--blue-frost); }
+    .result-item.active { background: var(--blue-pale); border-left: 3px solid var(--blue); }
+    .result-item.active .ri-num { color: var(--navy); }
+    .ri-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 8px; }
+    .ri-num { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--blue); font-weight: 500; flex-shrink: 0; }
+    .ri-badge { font-size: 9px; font-family: 'DM Mono', monospace; padding: 2px 7px; border-radius: 3px; flex-shrink: 0; }
+    .ri-badge.ok   { background: var(--blue-light); color: var(--navy-mid); border: 1px solid #b0c4e8; }
+    .ri-badge.pend { background: #FEF3DC; color: #7A4A00; border: 1px solid #F5C97A; }
+    .ri-badge.arch { background: #f3f3f3; color: #666; border: 1px solid #ddd; }
+    .ri-title { font-size: 13px; font-weight: 500; line-height: 1.5; color: var(--navy); margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .ri-meta { font-size: 11px; color: var(--text-faint); font-family: 'DM Mono', monospace; display: flex; gap: 12px; flex-wrap: wrap; }
+    .ri-tema { display: inline-block; font-size: 9px; font-family: 'DM Mono', monospace; padding: 2px 6px; background: var(--blue-frost); color: var(--blue); border-radius: 3px; border: 1px solid var(--border); margin-top: 5px; }
+
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; text-align: center; gap: 12px; }
+    .empty-icon { font-size: 36px; opacity: 0.3; }
+    .empty-title { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--navy); }
+    .empty-sub { font-size: 13px; color: var(--text-faint); }
+
+    /* ── PREVIEW ── */
+    .preview-pane {
+      width: var(--preview-w); flex-shrink: 0;
+      border-left: 1px solid var(--border);
+      background: #fff; overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .preview-empty {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 2rem; text-align: center; gap: 10px;
+    }
+    .preview-empty-icon { opacity: 0.15; }
+    .preview-empty-text { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); letter-spacing: 0.06em; }
+
+    .preview-header { padding: 1.4rem 1.4rem 1rem; border-bottom: 1px solid var(--border); }
+    .preview-num { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--blue); font-weight: 500; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .preview-badge { font-size: 10px; font-family: 'DM Mono', monospace; padding: 3px 10px; border-radius: 4px; }
+    .preview-badge.ok   { background: var(--blue-light); color: var(--navy-mid); border: 1px solid #b0c4e8; }
+    .preview-badge.pend { background: #FEF3DC; color: #7A4A00; border: 1px solid #F5C97A; }
+    .preview-badge.arch { background: #f3f3f3; color: #666; border: 1px solid #ddd; }
+    .preview-title { font-family: 'Playfair Display', serif; font-size: 18px; line-height: 1.3; color: var(--navy); font-weight: 700; }
+
+    .preview-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-bottom: 1px solid var(--border); }
+    .pmeta-item { padding: 0.9rem 1.4rem; border-right: 1px solid var(--border); border-bottom: none; }
+    .pmeta-item:nth-child(even) { border-right: none; }
+    .pmeta-item:nth-child(n+3) { border-top: 1px solid var(--border); }
+    .pmeta-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.12em; color: var(--text-faint); text-transform: uppercase; margin-bottom: 4px; }
+    .pmeta-value { font-size: 13px; font-weight: 500; color: var(--navy); }
+
+    .preview-body { padding: 1.4rem; flex: 1; }
+    .preview-section-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: var(--blue); text-transform: uppercase; margin-bottom: 0.8rem; }
+
+    .timeline { display: flex; flex-direction: column; gap: 0; margin-bottom: 1.5rem; }
+    .tl-item { display: flex; gap: 12px; padding-bottom: 16px; position: relative; }
+    .tl-item:last-child { padding-bottom: 0; }
+    .tl-dot-wrap { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+    .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); flex-shrink: 0; margin-top: 3px; }
+    .tl-dot.done { background: var(--navy); }
+    .tl-dot.current { background: var(--blue); box-shadow: 0 0 0 3px var(--blue-light); }
+    .tl-line { width: 1px; flex: 1; background: var(--border); margin-top: 4px; }
+    .tl-item:last-child .tl-line { display: none; }
+    .tl-content { flex: 1; }
+    .tl-label { font-size: 12px; font-weight: 500; color: var(--navy); margin-bottom: 2px; }
+    .tl-date { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-faint); }
+
+    .preview-summary { font-size: 13px; line-height: 1.8; color: var(--text-muted); font-weight: 300; margin-bottom: 1.5rem; }
+
+    .preview-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.5rem; }
+    .ptag { font-family: 'DM Mono', monospace; font-size: 10px; padding: 4px 10px; background: var(--blue-frost); color: var(--blue); border-radius: 4px; border: 1px solid var(--border); }
+
+    .preview-actions { padding: 1rem 1.4rem; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+    .btn-ver {
+      flex: 1; background: var(--navy); color: #fff; padding: 11px; font-size: 12px;
+      font-family: 'DM Mono', monospace; border: none; border-radius: 5px;
+      cursor: pointer; letter-spacing: 0.04em; text-align: center;
+      transition: background 0.2s; display: block;
+    }
+    .btn-ver:hover { background: var(--navy-mid); }
+    .btn-alerj { padding: 11px 14px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--blue); background: none; border: 1px solid var(--border); border-radius: 5px; cursor: pointer; transition: border-color 0.2s; }
+    .btn-alerj:hover { border-color: var(--blue); }
+
+    /* Scrollbar fina */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: #b0c0d8; }
+
+    /* Mobile */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .preview-pane { display: none; }
+      .nav-search { margin: 0 0.8rem; }
+    }
+  </style>
+</head>
+<body x-data="projetosApp()" x-init="init()">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">
+      <svg width="22" height="20" viewBox="0 0 120 110" fill="none">
+        <rect x="10" y="88" width="100" height="7" rx="2" fill="#0C2A5E"/>
+        <rect x="18" y="97" width="84" height="6" rx="2" fill="#0C2A5E"/>
+        <circle cx="60" cy="10" r="6" fill="#0C2A5E"/>
+        <circle cx="48" cy="14" r="4" fill="#0C2A5E"/>
+        <circle cx="72" cy="14" r="4" fill="#0C2A5E"/>
+        <path d="M60 18 C30 28 14 55 12 88 L108 88 C106 55 90 28 60 18Z" fill="#0C2A5E"/>
+        <path d="M60 18 L60 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M44 20 C36 35 30 60 29 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M76 20 C84 35 90 60 91 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M32 35 C28 50 22 68 18 88" stroke="#F0F4FB" stroke-width="2"/>
+        <path d="M88 35 C92 50 98 68 102 88" stroke="#F0F4FB" stroke-width="2"/>
+      </svg>
+      <div class="logo-text">RADARALERJ</div>
+    </a>
+
+    <div class="nav-search">
+      <span class="search-ic">&#9906;</span>
+      <input
+        type="text"
+        placeholder="Buscar por titulo, numero, deputado..."
+        x-model="busca"
+      />
+    </div>
+
+    <div class="nav-right">
+      <span class="nav-count" x-text="filtrados.length + ' projetos'"></span>
+      <a href="index.html"><button class="btn-back">← Inicio</button></a>
+    </div>
+  </nav>
+
+  <div class="app">
+
+    <!-- SIDEBAR DE FILTROS -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Filtros</span>
+        <button class="clear-btn" @click="limparFiltros()" x-show="temFiltrosAtivos" x-cloak>Limpar tudo</button>
+      </div>
+
+      <!-- Tags ativas -->
+      <div class="active-filters" x-show="temFiltrosAtivos" x-cloak>
+        <template x-for="f in filtrosAtivosList" :key="f">
+          <div class="active-tag" @click="removerFiltro(f)">
+            <span x-text="f"></span>
+            <span class="tag-x">x</span>
+          </div>
+        </template>
+      </div>
+
+      <!-- Status -->
+      <div class="filter-group">
+        <div class="filter-group-head" @click="grupos.status = !grupos.status">
+          <span class="filter-group-label">Status</span>
+          <span class="filter-arrow" :class="{ open: grupos.status }">&#9660;</span>
+        </div>
+        <div class="filter-options" x-show="grupos.status">
+          <template x-for="opt in opcoes.status" :key="opt.valor">
+            <div class="filter-opt" :class="{ active: filtros.status.includes(opt.valor) }" @click="toggleFiltro('status', opt.valor)">
+              <div class="filter-opt-check"><span class="check-mark" x-show="filtros.status.includes(opt.valor)">&#10003;</span></div>
+              <span class="filter-opt-label" x-text="opt.label"></span>
+              <span class="filter-opt-count" x-text="contarPor('status', opt.valor)"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Ano -->
+      <div class="filter-group">
+        <div class="filter-group-head" @click="grupos.ano = !grupos.ano">
+          <span class="filter-group-label">Ano</span>
+          <span class="filter-arrow" :class="{ open: grupos.ano }">&#9660;</span>
+        </div>
+        <div class="filter-options" x-show="grupos.ano">
+          <template x-for="ano in opcoes.anos" :key="ano">
+            <div class="filter-opt" :class="{ active: filtros.anos.includes(ano) }" @click="toggleFiltro('anos', ano)">
+              <div class="filter-opt-check"><span class="check-mark" x-show="filtros.anos.includes(ano)">&#10003;</span></div>
+              <span class="filter-opt-label" x-text="ano"></span>
+              <span class="filter-opt-count" x-text="contarPorAno(ano)"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Tema -->
+      <div class="filter-group">
+        <div class="filter-group-head" @click="grupos.tema = !grupos.tema">
+          <span class="filter-group-label">Tema</span>
+          <span class="filter-arrow" :class="{ open: grupos.tema }">&#9660;</span>
+        </div>
+        <div class="filter-options" x-show="grupos.tema">
+          <template x-for="tema in opcoes.temas" :key="tema">
+            <div class="filter-opt" :class="{ active: filtros.temas.includes(tema) }" @click="toggleFiltro('temas', tema)">
+              <div class="filter-opt-check"><span class="check-mark" x-show="filtros.temas.includes(tema)">&#10003;</span></div>
+              <span class="filter-opt-label" x-text="tema"></span>
+              <span class="filter-opt-count" x-text="contarPor('tema', tema)"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Deputado -->
+      <div class="filter-group">
+        <div class="filter-group-head" @click="grupos.deputado = !grupos.deputado">
+          <span class="filter-group-label">Deputado autor</span>
+          <span class="filter-arrow" :class="{ open: grupos.deputado }">&#9660;</span>
+        </div>
+        <div class="filter-options" x-show="grupos.deputado">
+          <template x-for="dep in opcoes.deputados" :key="dep">
+            <div class="filter-opt" :class="{ active: filtros.deputados.includes(dep) }" @click="toggleFiltro('deputados', dep)">
+              <div class="filter-opt-check"><span class="check-mark" x-show="filtros.deputados.includes(dep)">&#10003;</span></div>
+              <span class="filter-opt-label" x-text="dep"></span>
+              <span class="filter-opt-count" x-text="contarPor('autor', dep)"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </aside>
+
+    <!-- LISTA DE RESULTADOS -->
+    <main class="list-pane">
+      <div class="list-toolbar">
+        <span class="list-info">
+          <strong x-text="filtrados.length"></strong> projetos encontrados
+        </span>
+        <select class="sort-select" x-model="ordenacao">
+          <option value="recente">Mais recentes</option>
+          <option value="antigo">Mais antigos</option>
+          <option value="az">A-Z</option>
+        </select>
+      </div>
+
+      <!-- Items -->
+      <template x-if="filtrados.length > 0">
+        <div>
+          <template x-for="pl in filtrados" :key="pl.numero">
+            <div
+              class="result-item"
+              :class="{ active: selecionado && selecionado.numero === pl.numero }"
+              @click="selecionado = pl"
+            >
+              <div class="ri-top">
+                <span class="ri-num" x-text="pl.numero"></span>
+                <span class="ri-badge" :class="pl.badgeClass" x-text="pl.status"></span>
+              </div>
+              <div class="ri-title" x-text="pl.titulo"></div>
+              <div class="ri-meta">
+                <span x-text="pl.autor"></span>
+                <span x-text="pl.data"></span>
+              </div>
+              <span class="ri-tema" x-text="pl.tema"></span>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- Vazio -->
+      <template x-if="filtrados.length === 0">
+        <div class="empty-state">
+          <div class="empty-icon">&#128269;</div>
+          <div class="empty-title">Nenhum projeto encontrado</div>
+          <div class="empty-sub">Tente outros termos ou remova alguns filtros.</div>
+        </div>
+      </template>
+    </main>
+
+    <!-- PREVIEW LATERAL -->
+    <aside class="preview-pane">
+
+      <!-- Vazio -->
+      <template x-if="!selecionado">
+        <div class="preview-empty">
+          <svg class="preview-empty-icon" width="64" height="60" viewBox="0 0 120 110" fill="none">
+            <rect x="10" y="88" width="100" height="7" rx="2" fill="#0C2A5E"/>
+            <rect x="18" y="97" width="84" height="6" rx="2" fill="#0C2A5E"/>
+            <circle cx="60" cy="10" r="6" fill="#0C2A5E"/>
+            <circle cx="48" cy="14" r="4" fill="#0C2A5E"/>
+            <circle cx="72" cy="14" r="4" fill="#0C2A5E"/>
+            <path d="M60 18 C30 28 14 55 12 88 L108 88 C106 55 90 28 60 18Z" fill="#0C2A5E"/>
+            <path d="M60 18 L60 88" stroke="#F0F4FB" stroke-width="2.5"/>
+            <path d="M44 20 C36 35 30 60 29 88" stroke="#F0F4FB" stroke-width="2.5"/>
+            <path d="M76 20 C84 35 90 60 91 88" stroke="#F0F4FB" stroke-width="2.5"/>
+            <path d="M32 35 C28 50 22 68 18 88" stroke="#F0F4FB" stroke-width="2"/>
+            <path d="M88 35 C92 50 98 68 102 88" stroke="#F0F4FB" stroke-width="2"/>
+          </svg>
+          <span class="preview-empty-text">Selecione um projeto para ver detalhes</span>
+        </div>
+      </template>
+
+      <!-- Preview preenchido -->
+      <template x-if="selecionado">
+        <div style="display:flex; flex-direction:column; min-height:100%">
+          <div class="preview-header">
+            <div class="preview-num">
+              <span x-text="selecionado.numero"></span>
+              <span class="preview-badge" :class="selecionado.badgeClass" x-text="selecionado.status"></span>
+            </div>
+            <div class="preview-title" x-text="selecionado.titulo"></div>
+          </div>
+
+          <div class="preview-meta-grid">
+            <div class="pmeta-item">
+              <div class="pmeta-label">Autor</div>
+              <div class="pmeta-value" x-text="selecionado.autor"></div>
+            </div>
+            <div class="pmeta-item">
+              <div class="pmeta-label">Apresentacao</div>
+              <div class="pmeta-value" x-text="selecionado.data"></div>
+            </div>
+            <div class="pmeta-item">
+              <div class="pmeta-label">Tema</div>
+              <div class="pmeta-value" x-text="selecionado.tema"></div>
+            </div>
+            <div class="pmeta-item">
+              <div class="pmeta-label">Ano</div>
+              <div class="pmeta-value" x-text="selecionado.ano"></div>
+            </div>
+          </div>
+
+          <div class="preview-body">
+            <div class="preview-section-title">Tramitacao</div>
+            <div class="timeline">
+              <template x-for="etapa in selecionado.timeline" :key="etapa.label">
+                <div class="tl-item">
+                  <div class="tl-dot-wrap">
+                    <div class="tl-dot" :class="etapa.classe"></div>
+                    <div class="tl-line"></div>
+                  </div>
+                  <div class="tl-content">
+                    <div class="tl-label" x-text="etapa.label"></div>
+                    <div class="tl-date" x-text="etapa.data"></div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <div class="preview-section-title">Ementa</div>
+            <div class="preview-summary" x-text="selecionado.ementa"></div>
+
+            <div class="preview-section-title">Palavras-chave</div>
+            <div class="preview-tags">
+              <template x-for="tag in selecionado.tags" :key="tag">
+                <span class="ptag" x-text="tag"></span>
+              </template>
+            </div>
+          </div>
+
+          <div class="preview-actions">
+            <a class="btn-ver" :href="'projeto.html?id=' + selecionado.id">Ver pagina completa</a>
+            <button class="btn-alerj" title="Ver no site da ALERJ">&#8599;</button>
+          </div>
+        </div>
+      </template>
+    </aside>
+
+  </div><!-- .app -->
+
+  <script>
+    function projetosApp() {
+      return {
+        busca: '',
+        selecionado: null,
+        ordenacao: 'recente',
+
+        filtros: {
+          status: [],
+          anos: [],
+          temas: [],
+          deputados: []
+        },
+
+        grupos: {
+          status: true,
+          ano: true,
+          tema: true,
+          deputado: false
+        },
+
+        opcoes: {
+          status: [
+            { valor: 'Aprovado', label: 'Aprovado' },
+            { valor: 'Em tramitacao', label: 'Em tramitacao' },
+            { valor: 'Arquivado', label: 'Arquivado' },
+          ],
+          anos: ['2024', '2023', '2022'],
+          temas: ['Seguranca', 'Saude', 'Educacao', 'Transporte', 'Meio Ambiente', 'Habitacao', 'Economia'],
+          deputados: ['Dep. Carlos Silva', 'Dep. Ana Rocha', 'Dep. Maria Lima', 'Dep. Joao Melo', 'Dep. Pedro Souza', 'Dep. Lucia Verde']
+        },
+
+        // Dados mock — troque pelo fetch() da sua API
+        projetos: [
+          { id: 1, numero: 'PL 2847/2024', titulo: 'Institui programa estadual de cameras em viaturas policiais no estado do Rio de Janeiro', status: 'Aprovado', badgeClass: 'ok', autor: 'Dep. Carlos Silva', data: '12 mar 2024', ano: '2024', tema: 'Seguranca', ementa: 'Institui o Programa Estadual de Cameras Embarcadas em Viaturas Policiais, com o objetivo de aumentar a transparencia e o controle das acoes das forcas de seguranca do estado.', tags: ['seguranca publica', 'policia', 'cameras', 'transparencia'], timeline: [ { label: 'Apresentado', data: '12 mar 2024', classe: 'done' }, { label: 'Comissao de Seguranca', data: '28 mar 2024', classe: 'done' }, { label: 'Plenario', data: '15 abr 2024', classe: 'done' }, { label: 'Sancionado', data: '02 mai 2024', classe: 'current' } ] },
+          { id: 2, numero: 'PL 3012/2024', titulo: 'Regulamentacao do uso de cameras de vigilancia em espacos publicos municipais', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Ana Rocha', data: '28 fev 2024', ano: '2024', tema: 'Seguranca', ementa: 'Regulamenta a instalacao e operacao de sistemas de vigilancia por camera em logradouros publicos, estabelecendo diretrizes para armazenamento e acesso as imagens.', tags: ['vigilancia', 'espacos publicos', 'privacidade', 'seguranca'], timeline: [ { label: 'Apresentado', data: '28 fev 2024', classe: 'done' }, { label: 'Comissao de Seguranca', data: '14 mar 2024', classe: 'current' }, { label: 'Plenario', data: '—', classe: '' }, { label: 'Sancao', data: '—', classe: '' } ] },
+          { id: 3, numero: 'PL 1923/2024', titulo: 'Criacao de novos leitos de UTI em hospitais estaduais do Rio de Janeiro', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Maria Lima', data: '05 jan 2024', ano: '2024', tema: 'Saude', ementa: 'Determina a criacao de 500 novos leitos de UTI adulto e pediatrico nos hospitais da rede estadual, com prazo de implantacao de 18 meses.', tags: ['saude', 'UTI', 'hospitais', 'leitos'], timeline: [ { label: 'Apresentado', data: '05 jan 2024', classe: 'done' }, { label: 'Comissao de Saude', data: '22 jan 2024', classe: 'current' }, { label: 'Plenario', data: '—', classe: '' }, { label: 'Sancao', data: '—', classe: '' } ] },
+          { id: 4, numero: 'PL 0874/2024', titulo: 'Programa de reforco escolar nas redes publicas municipais e estaduais do RJ', status: 'Aprovado', badgeClass: 'ok', autor: 'Dep. Joao Melo', data: '18 jan 2024', ano: '2024', tema: 'Educacao', ementa: 'Institui o Programa Estadual de Reforco Escolar para alunos com defasagem de aprendizagem nas redes publicas municipal e estadual de ensino fundamental e medio.', tags: ['educacao', 'reforco escolar', 'ensino publico', 'aprendizagem'], timeline: [ { label: 'Apresentado', data: '18 jan 2024', classe: 'done' }, { label: 'Comissao de Educacao', data: '01 fev 2024', classe: 'done' }, { label: 'Plenario', data: '20 fev 2024', classe: 'done' }, { label: 'Sancionado', data: '10 mar 2024', classe: 'current' } ] },
+          { id: 5, numero: 'PL 2201/2024', titulo: 'Criacao de corredores de onibus expressos na Baixada Fluminense', status: 'Arquivado', badgeClass: 'arch', autor: 'Dep. Pedro Souza', data: '10 fev 2024', ano: '2024', tema: 'Transporte', ementa: 'Autoriza o Poder Executivo a implantar corredores exclusivos para onibus nas principais vias da Baixada Fluminense, visando a reducao do tempo de deslocamento.', tags: ['transporte', 'onibus', 'Baixada Fluminense', 'mobilidade'], timeline: [ { label: 'Apresentado', data: '10 fev 2024', classe: 'done' }, { label: 'Comissao de Transporte', data: '25 fev 2024', classe: 'done' }, { label: 'Arquivado', data: '15 mar 2024', classe: 'current' } ] },
+          { id: 6, numero: 'PL 3301/2024', titulo: 'Protecao de areas de preservacao permanente na Serra dos Orgaos', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Lucia Verde', data: '22 mar 2024', ano: '2024', tema: 'Meio Ambiente', ementa: 'Estabelece medidas adicionais de protecao para as areas de preservacao permanente na regiao da Serra dos Orgaos, proibindo novos licenciamentos de obras em zonas de risco.', tags: ['meio ambiente', 'preservacao', 'Serra dos Orgaos', 'APP'], timeline: [ { label: 'Apresentado', data: '22 mar 2024', classe: 'done' }, { label: 'Comissao de Meio Ambiente', data: '08 abr 2024', classe: 'current' }, { label: 'Plenario', data: '—', classe: '' }, { label: 'Sancao', data: '—', classe: '' } ] },
+          { id: 7, numero: 'PL 0512/2023', titulo: 'Programa habitacional para familias de baixa renda em areas de risco', status: 'Aprovado', badgeClass: 'ok', autor: 'Dep. Ana Rocha', data: '15 mar 2023', ano: '2023', tema: 'Habitacao', ementa: 'Institui programa de reassentamento e regularizacao fundiaria para familias residentes em areas de risco geologico ou hidrologico no estado do Rio de Janeiro.', tags: ['habitacao', 'areas de risco', 'reassentamento', 'baixa renda'], timeline: [ { label: 'Apresentado', data: '15 mar 2023', classe: 'done' }, { label: 'Comissao de Habitacao', data: '02 abr 2023', classe: 'done' }, { label: 'Plenario', data: '18 mai 2023', classe: 'done' }, { label: 'Sancionado', data: '05 jun 2023', classe: 'current' } ] },
+          { id: 8, numero: 'PL 1104/2023', titulo: 'Incentivos fiscais para empresas que contratam jovens aprendizes', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Carlos Silva', data: '10 mai 2023', ano: '2023', tema: 'Economia', ementa: 'Concede beneficios fiscais estaduais para empresas que ampliarem a contratacao de jovens aprendizes acima do minimo legal exigido pela legislacao federal.', tags: ['economia', 'jovens', 'aprendizes', 'emprego', 'incentivos fiscais'], timeline: [ { label: 'Apresentado', data: '10 mai 2023', classe: 'done' }, { label: 'Comissao de Economia', data: '28 mai 2023', classe: 'done' }, { label: 'Plenario', data: '12 ago 2023', classe: 'current' }, { label: 'Sancao', data: '—', classe: '' } ] },
+        ],
+
+        get filtrados() {
+          let lista = this.projetos.filter(pl => {
+            const q = this.busca.toLowerCase()
+            const matchBusca = q.length === 0 ||
+              pl.titulo.toLowerCase().includes(q) ||
+              pl.numero.toLowerCase().includes(q) ||
+              pl.autor.toLowerCase().includes(q) ||
+              pl.tema.toLowerCase().includes(q)
+
+            const matchStatus = this.filtros.status.length === 0 || this.filtros.status.includes(pl.status)
+            const matchAno    = this.filtros.anos.length === 0    || this.filtros.anos.includes(pl.ano)
+            const matchTema   = this.filtros.temas.length === 0   || this.filtros.temas.includes(pl.tema)
+            const matchDep    = this.filtros.deputados.length === 0 || this.filtros.deputados.includes(pl.autor)
+
+            return matchBusca && matchStatus && matchAno && matchTema && matchDep
+          })
+
+          if (this.ordenacao === 'az')      lista = lista.sort((a, b) => a.titulo.localeCompare(b.titulo))
+          if (this.ordenacao === 'antigo')  lista = lista.sort((a, b) => a.id - b.id)
+          if (this.ordenacao === 'recente') lista = lista.sort((a, b) => b.id - a.id)
+
+          return lista
+        },
+
+        get temFiltrosAtivos() {
+          return this.filtros.status.length > 0 || this.filtros.anos.length > 0 ||
+            this.filtros.temas.length > 0 || this.filtros.deputados.length > 0
+        },
+
+        get filtrosAtivosList() {
+          return [...this.filtros.status, ...this.filtros.anos, ...this.filtros.temas, ...this.filtros.deputados]
+        },
+
+        toggleFiltro(grupo, valor) {
+          const arr = this.filtros[grupo]
+          const idx = arr.indexOf(valor)
+          if (idx === -1) arr.push(valor)
+          else arr.splice(idx, 1)
+        },
+
+        removerFiltro(valor) {
+          for (const grupo of ['status', 'anos', 'temas', 'deputados']) {
+            const idx = this.filtros[grupo].indexOf(valor)
+            if (idx !== -1) { this.filtros[grupo].splice(idx, 1); return }
+          }
+        },
+
+        limparFiltros() {
+          this.filtros = { status: [], anos: [], temas: [], deputados: [] }
+        },
+
+        contarPor(campo, valor) {
+          return this.projetos.filter(pl => pl[campo] === valor).length
+        },
+
+        contarPorAno(ano) {
+          return this.projetos.filter(pl => pl.ano === ano).length
+        },
+
+        init() {
+          // Trocar por fetch quando API estiver pronta:
+          // fetch('/api/projetos').then(r => r.json()).then(d => this.projetos = d)
+        }
+      }
+    }
+  </script>
+</body>
+</html>

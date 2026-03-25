@@ -247,7 +247,7 @@
       </div>
 
       <template x-for="pl in projetosFiltrados.slice(0, 2)" :key="pl.numero">
-        <div class="rcard">
+        <div class="rcard" @click="abrirProjeto(pl.id)" style="cursor:pointer">
           <div class="rcard-head">
             <div class="rnum" x-text="pl.numero"></div>
             <div class="badge" :class="pl.badgeClass" x-text="pl.status"></div>
@@ -260,16 +260,17 @@
         </div>
       </template>
 
-      <div class="no-results" x-show="projetosFiltrados.length === 0" x-cloak>
+      <div class="no-results" x-show="loading" x-cloak>Carregando...</div>
+      <div class="no-results" x-show="!loading && projetosFiltrados.length === 0" x-cloak>
         Nenhum projeto encontrado para essa busca.
       </div>
     </div>
   </section>
 
   <div class="stats-row">
-    <div class="stat" data-aos="fade-up" data-aos-delay="0"   data-aos-duration="600"><div class="snum">4.2k</div><div class="slabel">Projetos indexados</div></div>
-    <div class="stat" data-aos="fade-up" data-aos-delay="80"  data-aos-duration="600"><div class="snum">70</div>  <div class="slabel">Deputados mapeados</div></div>
-    <div class="stat" data-aos="fade-up" data-aos-delay="160" data-aos-duration="600"><div class="snum">18</div>  <div class="slabel">Temas categorizados</div></div>
+    <div class="stat" data-aos="fade-up" data-aos-delay="0"   data-aos-duration="600"><div class="snum" x-text="stats.total_projetos > 999 ? (stats.total_projetos/1000).toFixed(1)+'k' : (stats.total_projetos || '...')">...</div><div class="slabel">Projetos indexados</div></div>
+    <div class="stat" data-aos="fade-up" data-aos-delay="80"  data-aos-duration="600"><div class="snum" x-text="stats.total_autores || '...'">...</div><div class="slabel">Deputados mapeados</div></div>
+    <div class="stat" data-aos="fade-up" data-aos-delay="160" data-aos-duration="600"><div class="snum" x-text="stats.total_comissoes || '...'">...</div><div class="slabel">Comissoes mapeadas</div></div>
     <div class="stat" data-aos="fade-up" data-aos-delay="240" data-aos-duration="600"><div class="snum">Diario</div><div class="slabel">Atualizacao</div></div>
   </div>
 
@@ -311,39 +312,119 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
   <script>
+    const SB_URL = 'https://rvjwmqmasqsuiupwxeyj.supabase.co'
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2andtcW1hc3FzdWl1cHd4ZXlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDQ3NjIsImV4cCI6MjA5MDAyMDc2Mn0.vbCodemYd2_S3sBY_dhpiuIUUKCNz_QMKZLxzEh38ng'
+
+    function sbHeaders(count = false) {
+      const h = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+      if (count) h['Prefer'] = 'count=exact'
+      return h
+    }
+
+    function badge(texto) {
+      if (!texto) return 'pend'
+      const t = texto.toLowerCase()
+      if (['aprovado','sancionado','promulgado','publicado no d'].some(k => t.includes(k))) return 'ok'
+      if (['arquivado','retirado','prejudicado','vetado'].some(k => t.includes(k))) return 'arch'
+      return 'pend'
+    }
+
+    const STATUS_LABEL = { ok: 'Aprovado', arch: 'Arquivado', pend: 'Em tramitação' }
+    const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+
+    function fmtDate(d) {
+      if (!d) return '—'
+      const [y, m, day] = d.split('-')
+      return `${day} ${MESES[parseInt(m) - 1]} ${y}`
+    }
+
+    function serializeList(p) {
+      const ementa = p.ementa || ''
+      const bc = badge(p.ultima_atualizacao_texto)
+      return {
+        id: p.id,
+        numero: p.numero,
+        titulo: ementa.length > 160 ? ementa.slice(0, 160) + '…' : ementa,
+        status: STATUS_LABEL[bc],
+        badgeClass: bc,
+        autor: p.autores_texto || '—',
+        data: fmtDate(p.data_publicacao),
+        temas: []
+      }
+    }
+
     function radarApp() {
       return {
         scrolled: false,
         menuOpen: false,
         busca: '',
         filtrosAtivos: [],
-        temas: ['Em votacao', '2024', 'Seguranca', 'Saude', 'Educacao', 'Meio Ambiente', 'Transporte'],
-        projetos: [
-          { numero: 'PL 2847/2024', titulo: 'Institui programa estadual de cameras em viaturas policiais no RJ', status: 'Aprovado', badgeClass: 'ok', autor: 'Dep. Carlos Silva', data: '12 mar 2024', temas: ['Seguranca', 'Em votacao', '2024'] },
-          { numero: 'PL 3012/2024', titulo: 'Regulamentacao do uso de cameras de vigilancia em espacos publicos municipais', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Ana Rocha', data: '28 fev 2024', temas: ['Seguranca', '2024'] },
-          { numero: 'PL 1923/2024', titulo: 'Criacao de novos leitos de UTI em hospitais estaduais do Rio de Janeiro', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Maria Lima', data: '05 jan 2024', temas: ['Saude', 'Em votacao', '2024'] },
-          { numero: 'PL 0874/2024', titulo: 'Programa de reforco escolar nas redes publicas municipais e estaduais', status: 'Aprovado', badgeClass: 'ok', autor: 'Dep. Joao Melo', data: '18 jan 2024', temas: ['Educacao', '2024'] },
-          { numero: 'PL 2201/2024', titulo: 'Criacao de corredores de onibus expressos na Baixada Fluminense', status: 'Arquivado', badgeClass: 'arch', autor: 'Dep. Pedro Souza', data: '10 fev 2024', temas: ['Transporte', '2024'] },
-          { numero: 'PL 3301/2024', titulo: 'Protecao de areas de preservacao permanente na Serra dos Orgaos', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Lucia Verde', data: '22 mar 2024', temas: ['Meio Ambiente', '2024'] },
-        ],
+        temas: ['Segurança', 'Saúde', 'Educação', 'Meio Ambiente', 'Transporte', 'Aprovado'],
+        projetos: [],
+        total: 0,
+        loading: false,
+        stats: { total_projetos: 0, total_autores: 0, total_comissoes: 0 },
+        _searchTimer: null,
+
         get projetosFiltrados() {
-          return this.projetos.filter(pl => {
-            const matchBusca = this.busca.length === 0 ||
-              pl.titulo.toLowerCase().includes(this.busca.toLowerCase()) ||
-              pl.numero.toLowerCase().includes(this.busca.toLowerCase()) ||
-              pl.autor.toLowerCase().includes(this.busca.toLowerCase())
-            const matchFiltros = this.filtrosAtivos.length === 0 ||
-              this.filtrosAtivos.every(f => pl.temas.includes(f))
-            return matchBusca && matchFiltros
-          })
+          return this.projetos
         },
+
         toggleFiltro(tema) {
           const idx = this.filtrosAtivos.indexOf(tema)
           if (idx === -1) this.filtrosAtivos.push(tema)
           else this.filtrosAtivos.splice(idx, 1)
+          this.buscar()
         },
-        init() {
+
+        async buscar() {
+          this.loading = true
+          const terms = [this.busca, ...this.filtrosAtivos].filter(Boolean)
+          const q = terms.join(' ').trim()
+
+          let url = `${SB_URL}/rest/v1/projetos?select=id,numero,ementa,autores_texto,data_publicacao,ultima_atualizacao_texto&order=data_publicacao.desc&limit=10`
+          if (q) {
+            url += `&or=(ementa.ilike.*${encodeURIComponent(q)}*,numero.ilike.*${encodeURIComponent(q)}*,autores_texto.ilike.*${encodeURIComponent(q)}*)`
+          }
+
+          try {
+            const res = await fetch(url, { headers: sbHeaders(true) })
+            const cr = res.headers.get('content-range')
+            this.total = cr ? parseInt(cr.split('/')[1]) : 0
+            const data = await res.json()
+            this.projetos = data.map(serializeList)
+          } catch (e) {
+            console.error('Erro ao carregar projetos:', e)
+          }
+          this.loading = false
+        },
+
+        abrirProjeto(id) {
+          window.location.href = 'projeto.html?id=' + id
+        },
+
+        async init() {
           AOS.init({ once: true, offset: 60, easing: 'ease-out-quart' })
+
+          const params = new URLSearchParams(window.location.search)
+          if (params.get('q')) this.busca = params.get('q')
+
+          try {
+            const [r1, r2, r3] = await Promise.all([
+              fetch(`${SB_URL}/rest/v1/projetos?select=id&limit=1`, { headers: sbHeaders(true) }),
+              fetch(`${SB_URL}/rest/v1/autores?select=id&limit=1`, { headers: sbHeaders(true) }),
+              fetch(`${SB_URL}/rest/v1/comissoes?select=id&limit=1`, { headers: sbHeaders(true) }),
+            ])
+            const cr = r => parseInt((r.headers.get('content-range') || '0/0').split('/')[1])
+            this.stats = { total_projetos: cr(r1), total_autores: cr(r2), total_comissoes: cr(r3) }
+          } catch (e) {}
+
+          await this.buscar()
+
+          this.$watch('busca', () => {
+            clearTimeout(this._searchTimer)
+            this._searchTimer = setTimeout(() => this.buscar(), 400)
+          })
         }
       }
     }
