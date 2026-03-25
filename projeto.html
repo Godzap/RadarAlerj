@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Projeto — RadarAlerj</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" />
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0C2A5E; --navy-mid: #1A3E8A; --blue: #3A5EA8;
+      --blue-light: #E8F0FB; --blue-pale: #F0F4FB; --blue-frost: #F7F9FD;
+      --border: #dde4f0; --text-muted: #4A6080; --text-faint: #7A90B5;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--blue-frost); color: var(--navy); }
+    [x-cloak] { display: none !important; }
+    a { text-decoration: none; color: inherit; }
+
+    /* NAV */
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; height: 54px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 8px; }
+    .logo-text { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; letter-spacing: 0.07em; color: var(--navy); }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .btn-ghost-sm {
+      font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text-muted);
+      border: 1px solid var(--border); padding: 6px 14px; border-radius: 4px;
+      cursor: pointer; background: #fff; transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-ghost-sm:hover { border-color: var(--blue); color: var(--navy); }
+    .btn-primary-sm {
+      font-size: 12px; font-family: 'DM Mono', monospace; color: #fff;
+      background: var(--navy); border: none; padding: 7px 16px; border-radius: 4px;
+      cursor: pointer; letter-spacing: 0.04em; transition: background 0.2s;
+    }
+    .btn-primary-sm:hover { background: var(--navy-mid); }
+
+    /* BREADCRUMB */
+    .breadcrumb {
+      display: flex; align-items: center; gap: 8px;
+      padding: 1rem 2rem; font-family: 'DM Mono', monospace;
+      font-size: 11px; color: var(--text-faint);
+      border-bottom: 1px solid var(--border); background: #fff;
+    }
+    .breadcrumb a { color: var(--blue); }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .bc-sep { opacity: 0.4; }
+
+    /* HERO DO PROJETO */
+    .project-hero {
+      background: #fff; border-bottom: 1px solid var(--border);
+      padding: 2.5rem 2rem 0;
+    }
+    .project-hero-inner { max-width: 1100px; margin: 0 auto; }
+
+    .project-tag-row { display: flex; align-items: center; gap: 10px; margin-bottom: 1.2rem; flex-wrap: wrap; }
+    .project-num { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--blue); font-weight: 500; }
+    .status-badge { font-size: 11px; font-family: 'DM Mono', monospace; padding: 4px 12px; border-radius: 4px; }
+    .status-badge.ok   { background: var(--blue-light); color: var(--navy-mid); border: 1px solid #b0c4e8; }
+    .status-badge.pend { background: #FEF3DC; color: #7A4A00; border: 1px solid #F5C97A; }
+    .status-badge.arch { background: #f3f3f3; color: #666; border: 1px solid #ddd; }
+    .tema-badge { font-size: 11px; font-family: 'DM Mono', monospace; padding: 4px 12px; border-radius: 4px; background: var(--blue-frost); color: var(--blue); border: 1px solid var(--border); }
+
+    .project-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.6rem, 3vw, 2.4rem);
+      line-height: 1.2; color: var(--navy); font-weight: 700;
+      max-width: 800px; margin-bottom: 1.5rem;
+    }
+
+    .project-meta-strip {
+      display: flex; gap: 0;
+      border-top: 1px solid var(--border);
+      margin: 0 -2rem;
+    }
+    .meta-item {
+      padding: 1rem 2rem; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .meta-item:last-child { border-right: none; }
+    .meta-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.14em; color: var(--text-faint); text-transform: uppercase; }
+    .meta-value { font-size: 13px; font-weight: 500; color: var(--navy); }
+
+    /* CONTEUDO PRINCIPAL */
+    .project-body { max-width: 1100px; margin: 0 auto; padding: 2rem; display: grid; grid-template-columns: 1fr 320px; gap: 1.5rem; align-items: start; }
+
+    /* COLUNA PRINCIPAL */
+    .main-col { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .card { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .card-header { padding: 1rem 1.4rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .card-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: var(--blue); text-transform: uppercase; }
+    .card-body { padding: 1.4rem; }
+
+    /* Ementa */
+    .ementa-text { font-size: 15px; line-height: 1.85; color: var(--text-muted); font-weight: 300; }
+    .ementa-text strong { color: var(--navy); font-weight: 500; }
+
+    /* Timeline */
+    .timeline { display: flex; flex-direction: column; }
+    .tl-item { display: flex; gap: 16px; padding-bottom: 24px; }
+    .tl-item:last-child { padding-bottom: 0; }
+    .tl-left { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 20px; }
+    .tl-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+    .tl-dot.done    { background: var(--navy); }
+    .tl-dot.current { background: var(--blue); box-shadow: 0 0 0 4px var(--blue-light); }
+    .tl-dot.pending { background: #fff; border: 2px solid var(--border); }
+    .tl-connector { width: 1px; flex: 1; background: var(--border); margin-top: 6px; }
+    .tl-item:last-child .tl-connector { display: none; }
+    .tl-right { flex: 1; }
+    .tl-title { font-size: 14px; font-weight: 500; color: var(--navy); margin-bottom: 3px; }
+    .tl-title.pending { color: var(--text-faint); font-weight: 400; }
+    .tl-date { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); margin-bottom: 4px; }
+    .tl-desc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+    /* Votacao */
+    .votos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; }
+    .voto-item { background: #fff; padding: 1.2rem; text-align: center; }
+    .voto-num { font-family: 'Playfair Display', serif; font-size: 32px; color: var(--navy); line-height: 1; }
+    .voto-num.sim { color: #1b5e20; }
+    .voto-num.nao { color: #b71c1c; }
+    .voto-num.abs { color: var(--text-faint); }
+    .voto-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--text-faint); text-transform: uppercase; margin-top: 4px; }
+    .voto-bar { height: 4px; border-radius: 2px; margin-top: 8px; }
+    .voto-bar.sim { background: #4caf50; }
+    .voto-bar.nao { background: #f44336; }
+    .voto-bar.abs { background: var(--border); }
+
+    /* Documentos */
+    .doc-list { display: flex; flex-direction: column; gap: 8px; }
+    .doc-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 7px; cursor: pointer; transition: border-color 0.2s, background 0.15s;
+    }
+    .doc-item:hover { border-color: var(--blue); background: var(--blue-pale); }
+    .doc-icon { width: 32px; height: 32px; background: var(--blue-light); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .doc-info { flex: 1; }
+    .doc-name { font-size: 13px; font-weight: 500; color: var(--navy); }
+    .doc-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-faint); margin-top: 2px; }
+    .doc-arrow { font-size: 14px; color: var(--text-faint); }
+
+    /* Tags */
+    .tags-wrap { display: flex; flex-wrap: wrap; gap: 7px; }
+    .tag { font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 12px; background: var(--blue-frost); color: var(--blue); border-radius: 4px; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; }
+    .tag:hover { background: var(--blue-light); border-color: var(--blue); }
+
+    /* COLUNA LATERAL */
+    .side-col { display: flex; flex-direction: column; gap: 1.5rem; position: sticky; top: 70px; }
+
+    /* Card de acoes */
+    .action-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .action-card-body { padding: 1.2rem; display: flex; flex-direction: column; gap: 8px; }
+    .btn-full {
+      width: 100%; padding: 12px; font-size: 13px; font-family: 'DM Mono', monospace;
+      border-radius: 6px; cursor: pointer; letter-spacing: 0.04em; text-align: center;
+      transition: all 0.2s; border: none;
+    }
+    .btn-full.primary { background: var(--navy); color: #fff; }
+    .btn-full.primary:hover { background: var(--navy-mid); }
+    .btn-full.outline { background: #fff; color: var(--navy); border: 1px solid var(--border); }
+    .btn-full.outline:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* Card deputado */
+    .dep-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .dep-card-body { padding: 1.2rem; display: flex; gap: 12px; align-items: center; }
+    .dep-avatar {
+      width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+      background: var(--blue-light); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Mono', monospace; font-size: 14px; color: var(--blue); font-weight: 500;
+    }
+    .dep-info { flex: 1; }
+    .dep-name { font-size: 14px; font-weight: 500; color: var(--navy); margin-bottom: 2px; }
+    .dep-party { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); margin-bottom: 6px; }
+    .dep-link { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--blue); letter-spacing: 0.06em; }
+    .dep-link:hover { text-decoration: underline; }
+    .dep-stats { padding: 0 1.2rem 1.2rem; display: flex; gap: 1px; background: var(--border); border-radius: 0 0 10px 10px; overflow: hidden; }
+    .dep-stat { flex: 1; background: var(--blue-frost); padding: 0.8rem; text-align: center; }
+    .dep-stat-num { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--navy); }
+    .dep-stat-label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+
+    /* Card relacionados */
+    .rel-list { display: flex; flex-direction: column; }
+    .rel-item { padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
+    .rel-item:last-child { border-bottom: none; }
+    .rel-item:hover { background: var(--blue-frost); }
+    .rel-num { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--blue); margin-bottom: 3px; }
+    .rel-title { font-size: 12px; color: var(--navy); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    /* Scrollbar fina */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .project-body { grid-template-columns: 1fr; padding: 1rem; }
+      .side-col { position: static; }
+      .project-meta-strip { flex-wrap: wrap; }
+      .meta-item { border-right: none; border-bottom: 1px solid var(--border); width: 50%; }
+      .votos-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body x-data="projetoApp()" x-init="init()">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">
+      <svg width="22" height="20" viewBox="0 0 120 110" fill="none">
+        <rect x="10" y="88" width="100" height="7" rx="2" fill="#0C2A5E"/>
+        <rect x="18" y="97" width="84" height="6" rx="2" fill="#0C2A5E"/>
+        <circle cx="60" cy="10" r="6" fill="#0C2A5E"/>
+        <circle cx="48" cy="14" r="4" fill="#0C2A5E"/>
+        <circle cx="72" cy="14" r="4" fill="#0C2A5E"/>
+        <path d="M60 18 C30 28 14 55 12 88 L108 88 C106 55 90 28 60 18Z" fill="#0C2A5E"/>
+        <path d="M60 18 L60 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M44 20 C36 35 30 60 29 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M76 20 C84 35 90 60 91 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M32 35 C28 50 22 68 18 88" stroke="#F0F4FB" stroke-width="2"/>
+        <path d="M88 35 C92 50 98 68 102 88" stroke="#F0F4FB" stroke-width="2"/>
+      </svg>
+      <div class="logo-text">RADARALERJ</div>
+    </a>
+    <div class="nav-actions">
+      <a href="projetos.html"><button class="btn-ghost-sm">← Voltar</button></a>
+      <button class="btn-primary-sm" @click="abrirAlerj()">Ver na ALERJ &#8599;</button>
+    </div>
+  </nav>
+
+  <!-- BREADCRUMB -->
+  <div class="breadcrumb">
+    <a href="index.html">Inicio</a>
+    <span class="bc-sep">/</span>
+    <a href="projetos.html">Projetos</a>
+    <span class="bc-sep">/</span>
+    <span x-text="projeto.numero"></span>
+  </div>
+
+  <!-- HERO -->
+  <div class="project-hero" data-aos="fade-up" data-aos-duration="500">
+    <div class="project-hero-inner">
+      <div class="project-tag-row">
+        <span class="project-num" x-text="projeto.numero"></span>
+        <span class="status-badge" :class="projeto.badgeClass" x-text="projeto.status"></span>
+        <span class="tema-badge" x-text="projeto.tema"></span>
+      </div>
+      <h1 class="project-title" x-text="projeto.titulo"></h1>
+    </div>
+    <div class="project-meta-strip">
+      <div class="meta-item">
+        <span class="meta-label">Autor</span>
+        <span class="meta-value" x-text="projeto.autor"></span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Apresentacao</span>
+        <span class="meta-value" x-text="projeto.dataApresentacao"></span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Ultima atualizacao</span>
+        <span class="meta-value" x-text="projeto.dataAtualizacao"></span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Comissao</span>
+        <span class="meta-value" x-text="projeto.comissao"></span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Legislatura</span>
+        <span class="meta-value" x-text="projeto.legislatura"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CORPO -->
+  <div class="project-body">
+
+    <!-- COLUNA PRINCIPAL -->
+    <div class="main-col">
+
+      <!-- Ementa -->
+      <div class="card" data-aos="fade-up" data-aos-delay="50" data-aos-duration="500">
+        <div class="card-header">
+          <span class="card-title">Ementa</span>
+        </div>
+        <div class="card-body">
+          <p class="ementa-text" x-text="projeto.ementa"></p>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="card" data-aos="fade-up" data-aos-delay="100" data-aos-duration="500">
+        <div class="card-header">
+          <span class="card-title">Tramitacao</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-faint)" x-text="projeto.etapaAtual"></span>
+        </div>
+        <div class="card-body">
+          <div class="timeline">
+            <template x-for="etapa in projeto.timeline" :key="etapa.label">
+              <div class="tl-item">
+                <div class="tl-left">
+                  <div class="tl-dot" :class="etapa.classe"></div>
+                  <div class="tl-connector"></div>
+                </div>
+                <div class="tl-right">
+                  <div class="tl-title" :class="{ pending: etapa.classe === 'pending' }" x-text="etapa.label"></div>
+                  <div class="tl-date" x-text="etapa.data"></div>
+                  <div class="tl-desc" x-show="etapa.desc" x-text="etapa.desc"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Votacao -->
+      <div class="card" x-show="projeto.votacao" data-aos="fade-up" data-aos-delay="150" data-aos-duration="500">
+        <div class="card-header">
+          <span class="card-title">Resultado da votacao</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-faint)" x-text="projeto.dataVotacao"></span>
+        </div>
+        <div class="card-body">
+          <div class="votos-grid">
+            <div class="voto-item">
+              <div class="voto-num sim" x-text="projeto.votacao && projeto.votacao.sim"></div>
+              <div class="voto-label">A favor</div>
+              <div class="voto-bar sim" :style="'width:' + (projeto.votacao ? (projeto.votacao.sim / projeto.votacao.total * 100) : 0) + '%'"></div>
+            </div>
+            <div class="voto-item">
+              <div class="voto-num nao" x-text="projeto.votacao && projeto.votacao.nao"></div>
+              <div class="voto-label">Contra</div>
+              <div class="voto-bar nao" :style="'width:' + (projeto.votacao ? (projeto.votacao.nao / projeto.votacao.total * 100) : 0) + '%'"></div>
+            </div>
+            <div class="voto-item">
+              <div class="voto-num abs" x-text="projeto.votacao && projeto.votacao.abstencao"></div>
+              <div class="voto-label">Abstencao</div>
+              <div class="voto-bar abs" style="width:100%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Documentos -->
+      <div class="card" data-aos="fade-up" data-aos-delay="200" data-aos-duration="500">
+        <div class="card-header">
+          <span class="card-title">Documentos</span>
+        </div>
+        <div class="card-body">
+          <div class="doc-list">
+            <template x-for="doc in projeto.documentos" :key="doc.nome">
+              <div class="doc-item">
+                <div class="doc-icon">&#128196;</div>
+                <div class="doc-info">
+                  <div class="doc-name" x-text="doc.nome"></div>
+                  <div class="doc-meta" x-text="doc.meta"></div>
+                </div>
+                <span class="doc-arrow">&#8599;</span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Palavras-chave -->
+      <div class="card" data-aos="fade-up" data-aos-delay="250" data-aos-duration="500">
+        <div class="card-header">
+          <span class="card-title">Palavras-chave</span>
+        </div>
+        <div class="card-body">
+          <div class="tags-wrap">
+            <template x-for="tag in projeto.tags" :key="tag">
+              <a :href="'projetos.html?q=' + tag" class="tag" x-text="tag"></a>
+            </template>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- .main-col -->
+
+    <!-- COLUNA LATERAL -->
+    <div class="side-col">
+
+      <!-- Acoes -->
+      <div class="action-card" data-aos="fade-left" data-aos-delay="100" data-aos-duration="500">
+        <div class="card-header">
+          <span class="card-title">Acoes</span>
+        </div>
+        <div class="action-card-body">
+          <button class="btn-full primary" @click="abrirAlerj()">Ver no site da ALERJ &#8599;</button>
+          <button class="btn-full outline" @click="copiarLink()">
+            <span x-text="copiado ? 'Link copiado!' : 'Copiar link desta pagina'"></span>
+          </button>
+          <button class="btn-full outline" @click="compartilhar()">Compartilhar</button>
+        </div>
+      </div>
+
+      <!-- Deputado autor -->
+      <div class="dep-card" data-aos="fade-left" data-aos-delay="150" data-aos-duration="500">
+        <div class="card-header">
+          <span class="card-title">Autor</span>
+        </div>
+        <div class="dep-card-body">
+          <div class="dep-avatar" x-text="projeto.autorIniciais"></div>
+          <div class="dep-info">
+            <div class="dep-name" x-text="projeto.autor"></div>
+            <div class="dep-party" x-text="projeto.autorPartido"></div>
+            <a href="projetos.html" class="dep-link">Ver todos os projetos &#8594;</a>
+          </div>
+        </div>
+        <div class="dep-stats">
+          <div class="dep-stat">
+            <div class="dep-stat-num" x-text="projeto.autorTotalProjetos"></div>
+            <div class="dep-stat-label">Projetos</div>
+          </div>
+          <div class="dep-stat">
+            <div class="dep-stat-num" x-text="projeto.autorAprovados"></div>
+            <div class="dep-stat-label">Aprovados</div>
+          </div>
+          <div class="dep-stat">
+            <div class="dep-stat-num" x-text="projeto.autorEmTramitacao"></div>
+            <div class="dep-stat-label">Em tramit.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Projetos relacionados -->
+      <div class="card" data-aos="fade-left" data-aos-delay="200" data-aos-duration="500">
+        <div class="card-header">
+          <span class="card-title">Projetos relacionados</span>
+        </div>
+        <div class="rel-list">
+          <template x-for="rel in projeto.relacionados" :key="rel.numero">
+            <a :href="'projeto.html?id=' + rel.id" class="rel-item">
+              <div class="rel-num" x-text="rel.numero"></div>
+              <div class="rel-title" x-text="rel.titulo"></div>
+            </a>
+          </template>
+        </div>
+      </div>
+
+    </div><!-- .side-col -->
+  </div><!-- .project-body -->
+
+  <script>
+    function projetoApp() {
+      return {
+        copiado: false,
+
+        // Dados mock — quando o back estiver pronto,
+        // faca fetch('/api/projetos/' + id) no init()
+        projeto: {
+          id: 1,
+          numero: 'PL 2847/2024',
+          titulo: 'Institui programa estadual de cameras em viaturas policiais no estado do Rio de Janeiro',
+          status: 'Aprovado',
+          badgeClass: 'ok',
+          tema: 'Seguranca',
+          autor: 'Dep. Carlos Silva',
+          autorIniciais: 'CS',
+          autorPartido: 'PDT · Rio de Janeiro',
+          autorTotalProjetos: 34,
+          autorAprovados: 12,
+          autorEmTramitacao: 18,
+          dataApresentacao: '12 mar 2024',
+          dataAtualizacao: '02 mai 2024',
+          dataVotacao: 'Plenario · 15 abr 2024',
+          comissao: 'Comissao de Seguranca Publica',
+          legislatura: '12a Legislatura',
+          etapaAtual: 'Aguardando sancao',
+          ementa: 'Institui o Programa Estadual de Cameras Embarcadas em Viaturas Policiais (PECEVP), com o objetivo de aumentar a transparencia, o controle e a responsabilizacao nas acoes das forcas de seguranca do estado do Rio de Janeiro. O programa preve a instalacao de cameras de video em todas as viaturas da Policia Militar e Policia Civil estaduais, com armazenamento em nuvem por periodo minimo de 90 dias e acesso regulamentado pela Ouvidoria de Policia.',
+          votacao: { sim: 52, nao: 8, abstencao: 3, total: 63 },
+          timeline: [
+            { label: 'Apresentado na ALERJ', data: '12 mar 2024', classe: 'done', desc: 'Protocolo no 2847/2024' },
+            { label: 'Comissao de Seguranca Publica', data: '28 mar 2024', classe: 'done', desc: 'Parecer favoravel por 7 votos a 1' },
+            { label: 'Comissao de Constituicao e Justica', data: '08 abr 2024', classe: 'done', desc: 'Aprovado por unanimidade' },
+            { label: 'Plenario', data: '15 abr 2024', classe: 'current', desc: '52 votos a favor, 8 contra, 3 abstencoes' },
+            { label: 'Sancao do Governador', data: 'Previsto para mai 2024', classe: 'pending', desc: '' },
+          ],
+          documentos: [
+            { nome: 'Texto integral do projeto', meta: 'PDF · 142 KB · 12 mar 2024' },
+            { nome: 'Parecer da Comissao de Seguranca', meta: 'PDF · 89 KB · 28 mar 2024' },
+            { nome: 'Parecer da CCJ', meta: 'PDF · 64 KB · 08 abr 2024' },
+            { nome: 'Ata da votacao em plenario', meta: 'PDF · 210 KB · 15 abr 2024' },
+          ],
+          tags: ['seguranca publica', 'policia militar', 'policia civil', 'cameras', 'transparencia', 'controle externo'],
+          relacionados: [
+            { id: 2, numero: 'PL 3012/2024', titulo: 'Regulamentacao do uso de cameras de vigilancia em espacos publicos municipais' },
+            { id: 3, numero: 'PL 1923/2024', titulo: 'Criacao de novos leitos de UTI em hospitais estaduais do Rio de Janeiro' },
+            { id: 7, numero: 'PL 0512/2023', titulo: 'Programa habitacional para familias de baixa renda em areas de risco' },
+          ]
+        },
+
+        abrirAlerj() {
+          window.open('https://www.alerj.rj.gov.br', '_blank')
+        },
+
+        copiarLink() {
+          navigator.clipboard.writeText(window.location.href).then(() => {
+            this.copiado = true
+            setTimeout(() => this.copiado = false, 2000)
+          })
+        },
+
+        compartilhar() {
+          if (navigator.share) {
+            navigator.share({
+              title: this.projeto.numero + ' — RadarAlerj',
+              text: this.projeto.titulo,
+              url: window.location.href
+            })
+          } else {
+            this.copiarLink()
+          }
+        },
+
+        init() {
+          AOS.init({ once: true, offset: 40, easing: 'ease-out-quart' })
+          // Quando o back estiver pronto:
+          // const params = new URLSearchParams(window.location.search)
+          // const id = params.get('id')
+          // fetch(`/api/projetos/${id}`).then(r => r.json()).then(d => this.projeto = d)
+        }
+      }
+    }
+  </script>
+</body>
+</html>
