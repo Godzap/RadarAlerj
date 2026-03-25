@@ -496,8 +496,8 @@
     }
 
     function serializeDetail(p) {
-      const autores = (p.autores || []).map(a => a.nome)
-      const comissoes = (p.comissoes || []).map(c => c.nome)
+      const autores = (p.projeto_autores || []).map(pa => pa.autores?.nome).filter(Boolean)
+      const comissoes = (p.projeto_comissoes || []).map(pc => pc.comissoes?.nome).filter(Boolean)
       const atualizacoes = (p.projeto_atualizacoes || []).sort((a, b) => (a.data_evento || '').localeCompare(b.data_evento || ''))
 
       const timeline = atualizacoes.map((u, i) => ({
@@ -582,7 +582,7 @@
           if (!id) { this.loading = false; this.erro = true; return }
 
           try {
-            const url = `${SB_URL}/rest/v1/projetos?id=eq.${id}&select=*,autores!projeto_autores(nome),comissoes!projeto_comissoes(nome),projeto_atualizacoes(descricao,data_evento)`
+            const url = `${SB_URL}/rest/v1/projetos?id=eq.${id}&select=*,projeto_autores(autores(nome)),projeto_comissoes(comissoes(nome)),projeto_atualizacoes(descricao,data_evento)`
             const res = await fetch(url, { headers: sbHeaders() })
             const data = await res.json()
             if (!data.length) throw new Error('Projeto não encontrado')

@@ -509,7 +509,7 @@
     function serializeItem(p) {
       const ementa = p.ementa || ''
       const bc = badge(p.ultima_atualizacao_texto)
-      const comissoes = (p.comissoes || []).map(c => c.nome)
+      const comissoes = (p.projeto_comissoes || []).map(pc => pc.comissoes?.nome).filter(Boolean)
       return {
         id: p.id, numero: p.numero,
         titulo: ementa.length > 160 ? ementa.slice(0,160)+'…' : ementa,
@@ -561,7 +561,7 @@
         },
 
         buildUrl(offset = 0) {
-          let url = `${SB_URL}/rest/v1/projetos?select=id,numero,ementa,autores_texto,data_publicacao,ultima_atualizacao_texto,ultima_atualizacao_data,fonte_url,comissoes!projeto_comissoes(nome)&limit=${this._limit}&offset=${offset}`
+          let url = `${SB_URL}/rest/v1/projetos?select=id,numero,ementa,autores_texto,data_publicacao,ultima_atualizacao_texto,ultima_atualizacao_data,fonte_url,projeto_comissoes(comissoes(nome))&limit=${this._limit}&offset=${offset}`
 
           if (this.ordenacao === 'recente') url += '&order=data_publicacao.desc'
           else if (this.ordenacao === 'antigo') url += '&order=data_publicacao.asc'
