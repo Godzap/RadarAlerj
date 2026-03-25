@@ -111,6 +111,24 @@
     .snum { font-family: 'Playfair Display', serif; font-size: 36px; color: var(--navy); line-height: 1; }
     .slabel { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--text-faint); text-transform: uppercase; margin-top: 6px; }
 
+    /* SEÇÃO RESULTADOS */
+    .results-section { padding: 3rem; border-bottom: 1px solid var(--border); }
+    .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 12px; }
+    .results-title { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: var(--blue); text-transform: uppercase; }
+    .results-count-label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); }
+    .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+    .pcard { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1.4rem; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
+    .pcard:hover { border-color: var(--blue); box-shadow: 0 4px 20px rgba(12,42,94,0.08); transform: translateY(-1px); }
+    .pcard-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+    .pcard-title { font-size: 13px; font-weight: 500; line-height: 1.55; color: var(--navy); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .pcard-meta { font-size: 11px; color: var(--text-faint); font-family: 'DM Mono', monospace; display: flex; gap: 12px; flex-wrap: wrap; }
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 2rem; }
+    .btn-page { font-family: 'DM Mono', monospace; font-size: 12px; padding: 8px 20px; border-radius: 5px; border: 1px solid var(--border); background: #fff; color: var(--navy); cursor: pointer; transition: all 0.15s; }
+    .btn-page:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+    .btn-page:disabled { opacity: 0.35; cursor: not-allowed; }
+    .page-info { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); }
+    @media (max-width: 900px) { .results-section { padding: 1.5rem; } .results-grid { grid-template-columns: 1fr; } }
+
     .features-section { border-bottom: 1px solid var(--border); }
     .features-header { padding: 4rem 3rem 2rem; border-bottom: 1px solid var(--border); }
     .section-tag { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: var(--blue); text-transform: uppercase; margin-bottom: 0.8rem; }
@@ -241,12 +259,12 @@
             <div class="chip" :class="{ on: filtrosAtivos.includes(tema) }" @click="toggleFiltro(tema)" x-text="tema"></div>
           </template>
         </div>
-        <div class="results-count" x-show="busca.length > 0 || filtrosAtivos.length > 0" x-cloak>
-          <span x-text="projetosFiltrados.length"></span> projeto(s) encontrado(s)
+        <div class="results-count">
+          <span x-text="total > 0 ? total + ' projeto(s) encontrado(s)' : 'Buscando...'"></span>
         </div>
       </div>
 
-      <template x-for="pl in projetosFiltrados.slice(0, 2)" :key="pl.numero">
+      <template x-for="pl in projetos.slice(0, 3)" :key="pl.numero">
         <div class="rcard" @click="abrirProjeto(pl.id)" style="cursor:pointer">
           <div class="rcard-head">
             <div class="rnum" x-text="pl.numero"></div>
@@ -260,10 +278,10 @@
         </div>
       </template>
 
+      <button class="nav-cta" style="width:100%;margin-top:4px" @click="focarResultados()">
+        Ver todos os projetos ↓
+      </button>
       <div class="no-results" x-show="loading" x-cloak>Carregando...</div>
-      <div class="no-results" x-show="!loading && projetosFiltrados.length === 0" x-cloak>
-        Nenhum projeto encontrado para essa busca.
-      </div>
     </div>
   </section>
 
@@ -273,6 +291,44 @@
     <div class="stat" data-aos="fade-up" data-aos-delay="160" data-aos-duration="600"><div class="snum" x-text="stats.total_comissoes || '...'">...</div><div class="slabel">Comissoes mapeadas</div></div>
     <div class="stat" data-aos="fade-up" data-aos-delay="240" data-aos-duration="600"><div class="snum">Diario</div><div class="slabel">Atualizacao</div></div>
   </div>
+
+  <section class="results-section" id="resultados">
+    <div class="results-header">
+      <div class="results-title">Projetos de lei</div>
+      <div class="results-count-label" x-show="!loading">
+        <span x-text="total"></span> resultado(s) · página <span x-text="page"></span> de <span x-text="Math.ceil(total/limit) || 1"></span>
+      </div>
+    </div>
+
+    <div x-show="loading" style="text-align:center;padding:2rem;font-family:'DM Mono',monospace;font-size:12px;color:var(--text-faint)">
+      Carregando...
+    </div>
+
+    <div class="results-grid" x-show="!loading">
+      <template x-for="pl in projetos" :key="pl.id">
+        <div class="pcard" @click="abrirProjeto(pl.id)">
+          <div class="pcard-head">
+            <div class="rnum" x-text="pl.numero"></div>
+            <div class="badge" :class="pl.badgeClass" x-text="pl.status"></div>
+          </div>
+          <div class="pcard-title" x-text="pl.titulo"></div>
+          <div class="pcard-meta">
+            <span x-text="pl.autor"></span>
+            <span x-text="pl.data"></span>
+          </div>
+        </div>
+      </template>
+      <div x-show="projetos.length === 0" style="grid-column:1/-1;text-align:center;padding:2rem;font-family:'DM Mono',monospace;font-size:12px;color:var(--text-faint);border:1px dashed var(--border);border-radius:10px">
+        Nenhum projeto encontrado.
+      </div>
+    </div>
+
+    <div class="pagination">
+      <button class="btn-page" @click="irPagina(page - 1)" :disabled="page <= 1 || loading">← Anterior</button>
+      <span class="page-info" x-text="page + ' / ' + (Math.ceil(total/limit) || 1)"></span>
+      <button class="btn-page" @click="irPagina(page + 1)" :disabled="page >= Math.ceil(total/limit) || loading">Próxima →</button>
+    </div>
+  </section>
 
   <section class="features-section" id="como-funciona">
     <div class="features-header" data-aos="fade-up" data-aos-duration="600">
@@ -362,18 +418,17 @@
         temas: ['Segurança', 'Saúde', 'Educação', 'Meio Ambiente', 'Transporte', 'Aprovado'],
         projetos: [],
         total: 0,
+        page: 1,
+        limit: 20,
         loading: false,
         stats: { total_projetos: 0, total_autores: 0, total_comissoes: 0 },
         _searchTimer: null,
-
-        get projetosFiltrados() {
-          return this.projetos
-        },
 
         toggleFiltro(tema) {
           const idx = this.filtrosAtivos.indexOf(tema)
           if (idx === -1) this.filtrosAtivos.push(tema)
           else this.filtrosAtivos.splice(idx, 1)
+          this.page = 1
           this.buscar()
         },
 
@@ -381,8 +436,9 @@
           this.loading = true
           const terms = [this.busca, ...this.filtrosAtivos].filter(Boolean)
           const q = terms.join(' ').trim()
+          const offset = (this.page - 1) * this.limit
 
-          let url = `${SB_URL}/rest/v1/projetos?select=id,numero,ementa,autores_texto,data_publicacao,ultima_atualizacao_texto&order=data_publicacao.desc&limit=10`
+          let url = `${SB_URL}/rest/v1/projetos?select=id,numero,ementa,autores_texto,data_publicacao,ultima_atualizacao_texto&order=data_publicacao.desc&limit=${this.limit}&offset=${offset}`
           if (q) {
             url += `&or=(ementa.ilike.*${encodeURIComponent(q)}*,numero.ilike.*${encodeURIComponent(q)}*,autores_texto.ilike.*${encodeURIComponent(q)}*)`
           }
@@ -399,6 +455,12 @@
           this.loading = false
         },
 
+        async irPagina(p) {
+          this.page = p
+          await this.buscar()
+          document.getElementById('resultados').scrollIntoView({ behavior: 'smooth' })
+        },
+
         abrirProjeto(id) {
           window.location.href = 'projeto.html?id=' + id
         },
@@ -406,6 +468,10 @@
         focarBusca() {
           document.getElementById('busca').scrollIntoView({ behavior: 'smooth' })
           setTimeout(() => document.querySelector('.search-box input')?.focus(), 400)
+        },
+
+        focarResultados() {
+          document.getElementById('resultados').scrollIntoView({ behavior: 'smooth' })
         },
 
         async init() {
@@ -428,7 +494,7 @@
 
           this.$watch('busca', () => {
             clearTimeout(this._searchTimer)
-            this._searchTimer = setTimeout(() => this.buscar(), 400)
+            this._searchTimer = setTimeout(() => { this.page = 1; this.buscar() }, 400)
           })
         }
       }
