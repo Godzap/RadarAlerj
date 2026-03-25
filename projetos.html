@@ -238,7 +238,7 @@
     </div>
 
     <div class="nav-right">
-      <span class="nav-count" x-text="filtrados.length + ' projetos'"></span>
+      <span class="nav-count" x-text="total + ' projetos'"></span>
       <a href="index.html"><button class="btn-back">← Inicio</button></a>
     </div>
   </nav>
@@ -335,7 +335,7 @@
     <main class="list-pane">
       <div class="list-toolbar">
         <span class="list-info">
-          <strong x-text="filtrados.length"></strong> projetos encontrados
+          <strong x-text="total"></strong> projetos encontrados
         </span>
         <select class="sort-select" x-model="ordenacao">
           <option value="recente">Mais recentes</option>
@@ -368,8 +368,14 @@
         </div>
       </template>
 
+      <!-- Carregar mais -->
+      <div x-show="temMais && !loading" style="padding:1rem;text-align:center">
+        <button class="btn-back" style="width:100%;padding:10px" @click="carregarMais()">Carregar mais projetos</button>
+      </div>
+      <div x-show="loading" style="padding:1rem;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-faint)">Carregando...</div>
+
       <!-- Vazio -->
-      <template x-if="filtrados.length === 0">
+      <template x-if="!loading && projetos.length === 0">
         <div class="empty-state">
           <div class="empty-icon">&#128269;</div>
           <div class="empty-title">Nenhum projeto encontrado</div>
@@ -461,7 +467,7 @@
 
           <div class="preview-actions">
             <a class="btn-ver" :href="'projeto.html?id=' + selecionado.id">Ver pagina completa</a>
-            <button class="btn-alerj" title="Ver no site da ALERJ">&#8599;</button>
+            <button class="btn-alerj" title="Ver no site da ALERJ" @click="selecionado.fonteUrl && window.open(selecionado.fonteUrl, '_blank')">&#8599;</button>
           </div>
         </div>
       </template>
@@ -470,111 +476,194 @@
   </div><!-- .app -->
 
   <script>
+    const SB_URL = 'https://rvjwmqmasqsuiupwxeyj.supabase.co'
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2andtcW1hc3FzdWl1cHd4ZXlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDQ3NjIsImV4cCI6MjA5MDAyMDc2Mn0.vbCodemYd2_S3sBY_dhpiuIUUKCNz_QMKZLxzEh38ng'
+
+    function sbH(count = false) {
+      const h = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+      if (count) h['Prefer'] = 'count=exact'
+      return h
+    }
+
+    function badge(t) {
+      if (!t) return 'pend'
+      const s = t.toLowerCase()
+      if (['aprovado','sancionado','promulgado','publicado no d'].some(k => s.includes(k))) return 'ok'
+      if (['arquivado','retirado','prejudicado','vetado'].some(k => s.includes(k))) return 'arch'
+      return 'pend'
+    }
+    const STATUS_LABEL = { ok: 'Aprovado', arch: 'Arquivado', pend: 'Em tramitação' }
+    const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+    function fmtDate(d) {
+      if (!d) return '—'
+      const [y,m,day] = d.split('-')
+      return `${day} ${MESES[parseInt(m)-1]} ${y}`
+    }
+    function extractTags(ementa) {
+      if (!ementa) return []
+      const words = (ementa.toLowerCase().match(/\b[a-záàâãéèêíïóôõúüç]{6,}\b/g) || [])
+      const seen = new Set(); const tags = []
+      for (const w of words) { if (!seen.has(w)) { seen.add(w); tags.push(w) } if (tags.length >= 6) break }
+      return tags
+    }
+    function serializeItem(p) {
+      const ementa = p.ementa || ''
+      const bc = badge(p.ultima_atualizacao_texto)
+      const comissoes = (p.comissoes || []).map(c => c.nome)
+      return {
+        id: p.id, numero: p.numero,
+        titulo: ementa.length > 160 ? ementa.slice(0,160)+'…' : ementa,
+        ementa, status: STATUS_LABEL[bc], badgeClass: bc,
+        autor: p.autores_texto || '—',
+        data: fmtDate(p.data_publicacao),
+        ano: p.data_publicacao ? p.data_publicacao.split('-')[0] : '—',
+        tema: comissoes[0] || '—',
+        tags: extractTags(ementa),
+        timeline: p.ultima_atualizacao_texto ? [{
+          label: p.ultima_atualizacao_texto.slice(0,120),
+          data: fmtDate(p.ultima_atualizacao_data),
+          classe: 'current'
+        }] : [],
+        fonteUrl: p.fonte_url || ''
+      }
+    }
+
     function projetosApp() {
       return {
-        busca: '',
-        selecionado: null,
-        ordenacao: 'recente',
+        busca: '', selecionado: null, ordenacao: 'recente',
+        projetos: [], total: 0, loading: false, temMais: false,
+        _offset: 0, _limit: 50, _timer: null,
 
-        filtros: {
-          status: [],
-          anos: [],
-          temas: [],
-          deputados: []
-        },
-
-        grupos: {
-          status: true,
-          ano: true,
-          tema: true,
-          deputado: false
-        },
-
+        filtros: { status: [], anos: [], deputados: [] },
+        grupos: { status: true, ano: true, tema: false, deputado: false },
         opcoes: {
           status: [
-            { valor: 'Aprovado', label: 'Aprovado' },
-            { valor: 'Em tramitacao', label: 'Em tramitacao' },
-            { valor: 'Arquivado', label: 'Arquivado' },
+            { valor: 'ok', label: 'Aprovado' },
+            { valor: 'pend', label: 'Em tramitação' },
+            { valor: 'arch', label: 'Arquivado' },
           ],
-          anos: ['2024', '2023', '2022'],
-          temas: ['Seguranca', 'Saude', 'Educacao', 'Transporte', 'Meio Ambiente', 'Habitacao', 'Economia'],
-          deputados: ['Dep. Carlos Silva', 'Dep. Ana Rocha', 'Dep. Maria Lima', 'Dep. Joao Melo', 'Dep. Pedro Souza', 'Dep. Lucia Verde']
+          anos: [], temas: [], deputados: []
         },
 
-        // Dados mock — troque pelo fetch() da sua API
-        projetos: [
-          { id: 1, numero: 'PL 2847/2024', titulo: 'Institui programa estadual de cameras em viaturas policiais no estado do Rio de Janeiro', status: 'Aprovado', badgeClass: 'ok', autor: 'Dep. Carlos Silva', data: '12 mar 2024', ano: '2024', tema: 'Seguranca', ementa: 'Institui o Programa Estadual de Cameras Embarcadas em Viaturas Policiais, com o objetivo de aumentar a transparencia e o controle das acoes das forcas de seguranca do estado.', tags: ['seguranca publica', 'policia', 'cameras', 'transparencia'], timeline: [ { label: 'Apresentado', data: '12 mar 2024', classe: 'done' }, { label: 'Comissao de Seguranca', data: '28 mar 2024', classe: 'done' }, { label: 'Plenario', data: '15 abr 2024', classe: 'done' }, { label: 'Sancionado', data: '02 mai 2024', classe: 'current' } ] },
-          { id: 2, numero: 'PL 3012/2024', titulo: 'Regulamentacao do uso de cameras de vigilancia em espacos publicos municipais', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Ana Rocha', data: '28 fev 2024', ano: '2024', tema: 'Seguranca', ementa: 'Regulamenta a instalacao e operacao de sistemas de vigilancia por camera em logradouros publicos, estabelecendo diretrizes para armazenamento e acesso as imagens.', tags: ['vigilancia', 'espacos publicos', 'privacidade', 'seguranca'], timeline: [ { label: 'Apresentado', data: '28 fev 2024', classe: 'done' }, { label: 'Comissao de Seguranca', data: '14 mar 2024', classe: 'current' }, { label: 'Plenario', data: '—', classe: '' }, { label: 'Sancao', data: '—', classe: '' } ] },
-          { id: 3, numero: 'PL 1923/2024', titulo: 'Criacao de novos leitos de UTI em hospitais estaduais do Rio de Janeiro', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Maria Lima', data: '05 jan 2024', ano: '2024', tema: 'Saude', ementa: 'Determina a criacao de 500 novos leitos de UTI adulto e pediatrico nos hospitais da rede estadual, com prazo de implantacao de 18 meses.', tags: ['saude', 'UTI', 'hospitais', 'leitos'], timeline: [ { label: 'Apresentado', data: '05 jan 2024', classe: 'done' }, { label: 'Comissao de Saude', data: '22 jan 2024', classe: 'current' }, { label: 'Plenario', data: '—', classe: '' }, { label: 'Sancao', data: '—', classe: '' } ] },
-          { id: 4, numero: 'PL 0874/2024', titulo: 'Programa de reforco escolar nas redes publicas municipais e estaduais do RJ', status: 'Aprovado', badgeClass: 'ok', autor: 'Dep. Joao Melo', data: '18 jan 2024', ano: '2024', tema: 'Educacao', ementa: 'Institui o Programa Estadual de Reforco Escolar para alunos com defasagem de aprendizagem nas redes publicas municipal e estadual de ensino fundamental e medio.', tags: ['educacao', 'reforco escolar', 'ensino publico', 'aprendizagem'], timeline: [ { label: 'Apresentado', data: '18 jan 2024', classe: 'done' }, { label: 'Comissao de Educacao', data: '01 fev 2024', classe: 'done' }, { label: 'Plenario', data: '20 fev 2024', classe: 'done' }, { label: 'Sancionado', data: '10 mar 2024', classe: 'current' } ] },
-          { id: 5, numero: 'PL 2201/2024', titulo: 'Criacao de corredores de onibus expressos na Baixada Fluminense', status: 'Arquivado', badgeClass: 'arch', autor: 'Dep. Pedro Souza', data: '10 fev 2024', ano: '2024', tema: 'Transporte', ementa: 'Autoriza o Poder Executivo a implantar corredores exclusivos para onibus nas principais vias da Baixada Fluminense, visando a reducao do tempo de deslocamento.', tags: ['transporte', 'onibus', 'Baixada Fluminense', 'mobilidade'], timeline: [ { label: 'Apresentado', data: '10 fev 2024', classe: 'done' }, { label: 'Comissao de Transporte', data: '25 fev 2024', classe: 'done' }, { label: 'Arquivado', data: '15 mar 2024', classe: 'current' } ] },
-          { id: 6, numero: 'PL 3301/2024', titulo: 'Protecao de areas de preservacao permanente na Serra dos Orgaos', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Lucia Verde', data: '22 mar 2024', ano: '2024', tema: 'Meio Ambiente', ementa: 'Estabelece medidas adicionais de protecao para as areas de preservacao permanente na regiao da Serra dos Orgaos, proibindo novos licenciamentos de obras em zonas de risco.', tags: ['meio ambiente', 'preservacao', 'Serra dos Orgaos', 'APP'], timeline: [ { label: 'Apresentado', data: '22 mar 2024', classe: 'done' }, { label: 'Comissao de Meio Ambiente', data: '08 abr 2024', classe: 'current' }, { label: 'Plenario', data: '—', classe: '' }, { label: 'Sancao', data: '—', classe: '' } ] },
-          { id: 7, numero: 'PL 0512/2023', titulo: 'Programa habitacional para familias de baixa renda em areas de risco', status: 'Aprovado', badgeClass: 'ok', autor: 'Dep. Ana Rocha', data: '15 mar 2023', ano: '2023', tema: 'Habitacao', ementa: 'Institui programa de reassentamento e regularizacao fundiaria para familias residentes em areas de risco geologico ou hidrologico no estado do Rio de Janeiro.', tags: ['habitacao', 'areas de risco', 'reassentamento', 'baixa renda'], timeline: [ { label: 'Apresentado', data: '15 mar 2023', classe: 'done' }, { label: 'Comissao de Habitacao', data: '02 abr 2023', classe: 'done' }, { label: 'Plenario', data: '18 mai 2023', classe: 'done' }, { label: 'Sancionado', data: '05 jun 2023', classe: 'current' } ] },
-          { id: 8, numero: 'PL 1104/2023', titulo: 'Incentivos fiscais para empresas que contratam jovens aprendizes', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Carlos Silva', data: '10 mai 2023', ano: '2023', tema: 'Economia', ementa: 'Concede beneficios fiscais estaduais para empresas que ampliarem a contratacao de jovens aprendizes acima do minimo legal exigido pela legislacao federal.', tags: ['economia', 'jovens', 'aprendizes', 'emprego', 'incentivos fiscais'], timeline: [ { label: 'Apresentado', data: '10 mai 2023', classe: 'done' }, { label: 'Comissao de Economia', data: '28 mai 2023', classe: 'done' }, { label: 'Plenario', data: '12 ago 2023', classe: 'current' }, { label: 'Sancao', data: '—', classe: '' } ] },
-        ],
-
-        get filtrados() {
-          let lista = this.projetos.filter(pl => {
-            const q = this.busca.toLowerCase()
-            const matchBusca = q.length === 0 ||
-              pl.titulo.toLowerCase().includes(q) ||
-              pl.numero.toLowerCase().includes(q) ||
-              pl.autor.toLowerCase().includes(q) ||
-              pl.tema.toLowerCase().includes(q)
-
-            const matchStatus = this.filtros.status.length === 0 || this.filtros.status.includes(pl.status)
-            const matchAno    = this.filtros.anos.length === 0    || this.filtros.anos.includes(pl.ano)
-            const matchTema   = this.filtros.temas.length === 0   || this.filtros.temas.includes(pl.tema)
-            const matchDep    = this.filtros.deputados.length === 0 || this.filtros.deputados.includes(pl.autor)
-
-            return matchBusca && matchStatus && matchAno && matchTema && matchDep
-          })
-
-          if (this.ordenacao === 'az')      lista = lista.sort((a, b) => a.titulo.localeCompare(b.titulo))
-          if (this.ordenacao === 'antigo')  lista = lista.sort((a, b) => a.id - b.id)
-          if (this.ordenacao === 'recente') lista = lista.sort((a, b) => b.id - a.id)
-
-          return lista
-        },
-
+        get filtrados() { return this.projetos },
         get temFiltrosAtivos() {
-          return this.filtros.status.length > 0 || this.filtros.anos.length > 0 ||
-            this.filtros.temas.length > 0 || this.filtros.deputados.length > 0
+          return this.filtros.status.length > 0 || this.filtros.anos.length > 0 || this.filtros.deputados.length > 0
+        },
+        get filtrosAtivosList() {
+          const labels = {
+            ok: 'Aprovado', pend: 'Em tramitação', arch: 'Arquivado'
+          }
+          return [
+            ...this.filtros.status.map(s => labels[s] || s),
+            ...this.filtros.anos,
+            ...this.filtros.deputados
+          ]
         },
 
-        get filtrosAtivosList() {
-          return [...this.filtros.status, ...this.filtros.anos, ...this.filtros.temas, ...this.filtros.deputados]
+        buildUrl(offset = 0) {
+          let url = `${SB_URL}/rest/v1/projetos?select=id,numero,ementa,autores_texto,data_publicacao,ultima_atualizacao_texto,ultima_atualizacao_data,fonte_url,comissoes!projeto_comissoes(nome)&limit=${this._limit}&offset=${offset}`
+
+          if (this.ordenacao === 'recente') url += '&order=data_publicacao.desc'
+          else if (this.ordenacao === 'antigo') url += '&order=data_publicacao.asc'
+          else if (this.ordenacao === 'az') url += '&order=ementa.asc'
+
+          if (this.busca) {
+            const q = encodeURIComponent(this.busca)
+            url += `&or=(ementa.ilike.*${q}*,numero.ilike.*${q}*,autores_texto.ilike.*${q}*)`
+          }
+
+          if (this.filtros.status.length > 0) {
+            const conds = []
+            if (this.filtros.status.includes('ok'))
+              conds.push('ultima_atualizacao_texto.ilike.*aprovado*','ultima_atualizacao_texto.ilike.*sancionado*','ultima_atualizacao_texto.ilike.*promulgado*')
+            if (this.filtros.status.includes('arch'))
+              conds.push('ultima_atualizacao_texto.ilike.*arquivado*','ultima_atualizacao_texto.ilike.*retirado*','ultima_atualizacao_texto.ilike.*prejudicado*','ultima_atualizacao_texto.ilike.*vetado*')
+            if (this.filtros.status.includes('pend')) {
+              url += '&ultima_atualizacao_texto=not.ilike.*aprovado*&ultima_atualizacao_texto=not.ilike.*sancionado*&ultima_atualizacao_texto=not.ilike.*promulgado*&ultima_atualizacao_texto=not.ilike.*arquivado*&ultima_atualizacao_texto=not.ilike.*retirado*&ultima_atualizacao_texto=not.ilike.*prejudicado*&ultima_atualizacao_texto=not.ilike.*vetado*'
+            } else if (conds.length > 0) {
+              url += `&or=(${conds.join(',')})`
+            }
+          }
+
+          if (this.filtros.anos.length > 0) {
+            const anoOr = this.filtros.anos.map(a => `and(data_publicacao.gte.${a}-01-01,data_publicacao.lte.${a}-12-31)`).join(',')
+            url += `&or=(${anoOr})`
+          }
+
+          if (this.filtros.deputados.length > 0) {
+            const depOr = this.filtros.deputados.map(d => `autores_texto.ilike.*${encodeURIComponent(d)}*`).join(',')
+            url += `&or=(${depOr})`
+          }
+
+          return url
+        },
+
+        async buscar(append = false) {
+          this.loading = true
+          if (!append) this._offset = 0
+          try {
+            const res = await fetch(this.buildUrl(this._offset), { headers: sbH(true) })
+            const cr = res.headers.get('content-range')
+            this.total = cr ? parseInt(cr.split('/')[1]) : 0
+            const data = await res.json()
+            const items = data.map(serializeItem)
+            if (append) this.projetos.push(...items)
+            else { this.projetos = items; this.selecionado = null }
+            this.temMais = (this._offset + this._limit) < this.total
+          } catch(e) { console.error(e) }
+          this.loading = false
+        },
+
+        async carregarMais() {
+          this._offset += this._limit
+          await this.buscar(true)
         },
 
         toggleFiltro(grupo, valor) {
           const arr = this.filtros[grupo]
           const idx = arr.indexOf(valor)
-          if (idx === -1) arr.push(valor)
-          else arr.splice(idx, 1)
+          if (idx === -1) arr.push(valor); else arr.splice(idx, 1)
+          this.buscar()
         },
 
-        removerFiltro(valor) {
-          for (const grupo of ['status', 'anos', 'temas', 'deputados']) {
-            const idx = this.filtros[grupo].indexOf(valor)
-            if (idx !== -1) { this.filtros[grupo].splice(idx, 1); return }
+        removerFiltro(label) {
+          const map = { 'Aprovado': 'ok', 'Em tramitação': 'pend', 'Arquivado': 'arch' }
+          const val = map[label] || label
+          for (const grupo of ['status', 'anos', 'deputados']) {
+            const idx = this.filtros[grupo].indexOf(val)
+            if (idx !== -1) { this.filtros[grupo].splice(idx, 1); this.buscar(); return }
+            const idx2 = this.filtros[grupo].indexOf(label)
+            if (idx2 !== -1) { this.filtros[grupo].splice(idx2, 1); this.buscar(); return }
           }
         },
 
         limparFiltros() {
-          this.filtros = { status: [], anos: [], temas: [], deputados: [] }
+          this.filtros = { status: [], anos: [], deputados: [] }
+          this.buscar()
         },
 
-        contarPor(campo, valor) {
-          return this.projetos.filter(pl => pl[campo] === valor).length
+        contarPor() { return '' },
+        contarPorAno() { return '' },
+
+        async carregarOpcoes() {
+          const ano = new Date().getFullYear()
+          this.opcoes.anos = Array.from({length: 6}, (_, i) => String(ano - i))
+          try {
+            const res = await fetch(`${SB_URL}/rest/v1/autores?select=nome&order=nome.asc&limit=50`, { headers: sbH() })
+            const data = await res.json()
+            this.opcoes.deputados = data.map(d => d.nome)
+          } catch(e) {}
         },
 
-        contarPorAno(ano) {
-          return this.projetos.filter(pl => pl.ano === ano).length
-        },
-
-        init() {
-          // Trocar por fetch quando API estiver pronta:
-          // fetch('/api/projetos').then(r => r.json()).then(d => this.projetos = d)
+        async init() {
+          const params = new URLSearchParams(window.location.search)
+          if (params.get('q')) this.busca = params.get('q')
+          await Promise.all([this.carregarOpcoes(), this.buscar()])
+          this.$watch('busca', () => {
+            clearTimeout(this._timer)
+            this._timer = setTimeout(() => this.buscar(), 400)
+          })
+          this.$watch('ordenacao', () => this.buscar())
         }
       }
     }
