@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RadarAlerj</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" />
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0C2A5E; --navy-mid: #1A3E8A; --blue: #3A5EA8;
+      --blue-light: #E8F0FB; --blue-pale: #F0F4FB; --blue-frost: #F7F9FD;
+      --border: #dde4f0; --text-muted: #4A6080; --text-faint: #7A90B5;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: #fff; color: var(--navy); overflow-x: hidden; }
+    [x-cloak] { display: none !important; }
+
+    .nav {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.1rem 3rem; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 100; transition: box-shadow 0.3s;
+    }
+    .nav.scrolled { box-shadow: 0 2px 24px rgba(12,42,94,0.07); }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-text { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; letter-spacing: 0.07em; color: var(--navy); }
+    .nav-links { display: flex; gap: 2.2rem; }
+    .nav-links a { font-size: 13px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--navy); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-cta {
+      font-size: 12px; font-family: 'DM Mono', monospace; background: var(--navy);
+      color: #fff; padding: 8px 20px; border-radius: 5px; cursor: pointer;
+      letter-spacing: 0.05em; border: none; transition: background 0.2s, transform 0.15s;
+    }
+    .nav-cta:hover { background: var(--navy-mid); transform: translateY(-1px); }
+    .nav-hamburger {
+      display: none; flex-direction: column; gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 4px;
+    }
+    .nav-hamburger span { display: block; width: 22px; height: 2px; background: var(--navy); border-radius: 2px; transition: transform 0.25s, opacity 0.25s; }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+    .mobile-menu {
+      flex-direction: column; background: #fff;
+      border-bottom: 1px solid var(--border); padding: 1rem 1.5rem 1.5rem; gap: 1rem;
+    }
+    .mobile-menu a { font-size: 15px; color: var(--text-muted); text-decoration: none; padding: 6px 0; border-bottom: 1px solid var(--border); }
+
+    .hero { display: grid; grid-template-columns: 1fr 1fr; min-height: calc(100vh - 58px); }
+    .hero-left { padding: 6rem 3rem 5rem; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid var(--border); }
+    .tag { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.16em; color: var(--blue); text-transform: uppercase; margin-bottom: 1.8rem; display: flex; align-items: center; gap: 10px; }
+    .tag-line { width: 32px; height: 1px; background: var(--blue); flex-shrink: 0; }
+    .hero-title { font-family: 'Playfair Display', serif; font-size: clamp(3rem, 4.5vw, 4.4rem); line-height: 1.06; font-weight: 700; color: var(--navy); margin-bottom: 1.6rem; }
+    .hero-title em { font-style: italic; color: var(--blue); }
+    .hero-sub { font-size: 16px; line-height: 1.8; color: var(--text-muted); max-width: 430px; margin-bottom: 2.8rem; font-weight: 300; }
+    .hero-actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: var(--navy); color: #fff; padding: 14px 32px; font-size: 13px;
+      font-family: 'DM Mono', monospace; border: none; border-radius: 5px; cursor: pointer;
+      letter-spacing: 0.05em; transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-primary:hover { background: var(--navy-mid); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(12,42,94,0.18); }
+    .btn-ghost {
+      font-size: 13px; color: var(--blue); font-family: 'DM Mono', monospace;
+      display: flex; align-items: center; gap: 7px; background: none;
+      border: 1px solid var(--border); padding: 13px 22px; border-radius: 5px;
+      transition: border-color 0.2s, transform 0.15s; text-decoration: none; cursor: pointer;
+    }
+    .btn-ghost:hover { border-color: var(--blue); transform: translateY(-1px); }
+
+    .hero-right { background: var(--blue-pale); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; padding: 3.5rem 2.5rem; gap: 14px; }
+    .dot-grid { position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(58,94,168,0.12) 1px, transparent 1px); background-size: 24px 24px; pointer-events: none; }
+    .dome-watermark { position: absolute; right: -50px; bottom: -30px; opacity: 0.055; pointer-events: none; }
+
+    .search-preview { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.4rem; position: relative; z-index: 2; box-shadow: 0 4px 20px rgba(12,42,94,0.06); }
+    .search-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: var(--blue); text-transform: uppercase; margin-bottom: 9px; }
+    .search-box { display: flex; align-items: center; gap: 10px; border: 1px solid #c0cde8; border-radius: 6px; padding: 10px 14px; background: var(--blue-frost); transition: border-color 0.2s; }
+    .search-box:focus-within { border-color: var(--blue); }
+    .search-box input { border: none; background: none; outline: none; font-size: 13px; color: var(--navy); font-family: 'DM Mono', monospace; flex: 1; width: 100%; }
+    .search-box input::placeholder { color: var(--text-faint); }
+    .search-icon { color: var(--blue); font-size: 15px; flex-shrink: 0; }
+    .results-count { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--blue); margin-top: 8px; letter-spacing: 0.06em; min-height: 16px; }
+    .filters { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 11px; }
+    .chip { font-size: 10px; font-family: 'DM Mono', monospace; padding: 5px 11px; border-radius: 4px; border: 1px solid #c0cde8; color: #5070A0; background: #fff; cursor: pointer; transition: all 0.15s; user-select: none; }
+    .chip:hover { border-color: var(--blue); color: var(--navy); }
+    .chip.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+
+    .rcard { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.4rem; position: relative; z-index: 2; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s; box-shadow: 0 2px 12px rgba(12,42,94,0.04); }
+    .rcard:hover { border-color: var(--blue); box-shadow: 0 6px 24px rgba(12,42,94,0.10); transform: translateY(-2px); }
+    .rcard-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .rnum { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--blue); font-weight: 500; }
+    .badge { font-size: 10px; font-family: 'DM Mono', monospace; padding: 3px 10px; border-radius: 4px; }
+    .badge.ok   { background: var(--blue-light); color: var(--navy-mid); border: 1px solid #b0c4e8; }
+    .badge.pend { background: #FEF3DC; color: #7A4A00; border: 1px solid #F5C97A; }
+    .badge.arch { background: #f3f3f3; color: #666; border: 1px solid #ddd; }
+    .rtitle { font-size: 13px; font-weight: 500; line-height: 1.55; color: var(--navy); margin-bottom: 7px; }
+    .rmeta { font-size: 11px; color: var(--text-faint); font-family: 'DM Mono', monospace; display: flex; gap: 14px; }
+    .no-results { text-align: center; padding: 1.5rem; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-faint); background: #fff; border: 1px dashed var(--border); border-radius: 10px; position: relative; z-index: 2; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--blue-frost); }
+    .stat { padding: 2.2rem 1.5rem; text-align: center; border-right: 1px solid var(--border); transition: background 0.2s; }
+    .stat:last-child { border-right: none; }
+    .stat:hover { background: var(--blue-pale); }
+    .snum { font-family: 'Playfair Display', serif; font-size: 36px; color: var(--navy); line-height: 1; }
+    .slabel { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--text-faint); text-transform: uppercase; margin-top: 6px; }
+
+    .features-section { border-bottom: 1px solid var(--border); }
+    .features-header { padding: 4rem 3rem 2rem; border-bottom: 1px solid var(--border); }
+    .section-tag { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: var(--blue); text-transform: uppercase; margin-bottom: 0.8rem; }
+    .section-title { font-family: 'Playfair Display', serif; font-size: clamp(1.6rem, 2.5vw, 2.2rem); color: var(--navy); font-weight: 700; }
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .feat { padding: 3rem; border-right: 1px solid var(--border); transition: background 0.2s; }
+    .feat:last-child { border-right: none; }
+    .feat:hover { background: var(--blue-frost); }
+    .feat-icon { width: 40px; height: 40px; background: var(--blue-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.4rem; font-size: 18px; }
+    .fnum { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--blue); margin-bottom: 1rem; letter-spacing: 0.08em; }
+    .ftitle { font-family: 'Playfair Display', serif; font-size: 21px; color: var(--navy); margin-bottom: 0.9rem; line-height: 1.25; }
+    .fdesc { font-size: 14px; line-height: 1.8; color: var(--text-muted); font-weight: 300; }
+
+    .cta-section { padding: 6rem 3rem; text-align: center; background: var(--navy); position: relative; overflow: hidden; }
+    .cta-dot-grid { position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 24px 24px; pointer-events: none; }
+    .cta-section h2 { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 3.5vw, 3rem); color: #fff; margin-bottom: 1rem; position: relative; }
+    .cta-section h2 em { font-style: italic; color: #8aaee0; }
+    .cta-section p { font-size: 15px; color: rgba(255,255,255,0.6); margin-bottom: 2.5rem; font-weight: 300; position: relative; }
+    .btn-white { background: #fff; color: var(--navy); padding: 15px 36px; font-size: 13px; font-family: 'DM Mono', monospace; border: none; border-radius: 5px; cursor: pointer; letter-spacing: 0.05em; transition: transform 0.15s, box-shadow 0.2s; position: relative; }
+    .btn-white:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+
+    .footer { border-top: 1px solid var(--border); padding: 1.6rem 3rem; display: flex; justify-content: space-between; align-items: center; background: var(--blue-frost); }
+    .footer-left { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); display: flex; align-items: center; gap: 10px; }
+    .footer-right { font-size: 12px; color: var(--text-faint); }
+    .dot-live { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); animation: pulse 2s infinite; display: inline-block; flex-shrink: 0; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.5)} }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; min-height: auto; }
+      .hero-right { display: none; }
+      .hero-left { padding: 4rem 1.8rem 3rem; border-right: none; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .stat:nth-child(2) { border-right: none; }
+      .stat:nth-child(3), .stat:nth-child(4) { border-top: 1px solid var(--border); }
+      .features-grid { grid-template-columns: 1fr; }
+      .feat { border-right: none; border-bottom: 1px solid var(--border); }
+      .feat:last-child { border-bottom: none; }
+      .nav-links { display: none; }
+      .nav { padding: 1rem 1.5rem; }
+      .nav-hamburger { display: flex; }
+      .footer { flex-direction: column; gap: 10px; text-align: center; padding: 1.5rem; }
+      .cta-section, .features-header { padding: 4rem 1.5rem; }
+    }
+  </style>
+</head>
+<body x-data="radarApp()" x-init="init()" @scroll.window="scrolled = window.scrollY > 20">
+
+  <nav class="nav" :class="{ scrolled }">
+    <a href="#" class="nav-logo">
+      <svg width="26" height="24" viewBox="0 0 120 110" fill="none">
+        <rect x="10" y="88" width="100" height="7" rx="2" fill="#0C2A5E"/>
+        <rect x="18" y="97" width="84" height="6" rx="2" fill="#0C2A5E"/>
+        <circle cx="60" cy="10" r="6" fill="#0C2A5E"/>
+        <circle cx="48" cy="14" r="4" fill="#0C2A5E"/>
+        <circle cx="72" cy="14" r="4" fill="#0C2A5E"/>
+        <path d="M60 18 C30 28 14 55 12 88 L108 88 C106 55 90 28 60 18Z" fill="#0C2A5E"/>
+        <path d="M60 18 L60 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M44 20 C36 35 30 60 29 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M76 20 C84 35 90 60 91 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M32 35 C28 50 22 68 18 88" stroke="#F0F4FB" stroke-width="2"/>
+        <path d="M88 35 C92 50 98 68 102 88" stroke="#F0F4FB" stroke-width="2"/>
+      </svg>
+      <div class="logo-text">RADARALERJ</div>
+    </a>
+    <div class="nav-links">
+      <a href="#projetos">Projetos</a>
+      <a href="#deputados">Deputados</a>
+      <a href="#temas">Temas</a>
+      <a href="#sobre">Sobre</a>
+    </div>
+    <div class="nav-right">
+      <button class="nav-cta">Explorar</button>
+      <button class="nav-hamburger" :class="{ open: menuOpen }" @click="menuOpen = !menuOpen">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="mobile-menu" x-show="menuOpen" x-transition x-cloak style="display:flex">
+    <a href="#projetos" @click="menuOpen = false">Projetos</a>
+    <a href="#deputados" @click="menuOpen = false">Deputados</a>
+    <a href="#temas" @click="menuOpen = false">Temas</a>
+    <a href="#sobre" @click="menuOpen = false">Sobre</a>
+    <button class="btn-primary" @click="menuOpen = false">Explorar</button>
+  </div>
+
+  <section class="hero">
+    <div class="hero-left">
+      <div class="tag" data-aos="fade-right" data-aos-duration="600">
+        <div class="tag-line"></div>Transparência legislativa · RJ
+      </div>
+      <h1 class="hero-title" data-aos="fade-up" data-aos-delay="100" data-aos-duration="700">
+        A Assembleia<br>no seu<br><em>radar.</em>
+      </h1>
+      <p class="hero-sub" data-aos="fade-up" data-aos-delay="200" data-aos-duration="700">
+        Todos os projetos de lei da ALERJ em um lugar só. Busca inteligente, filtros reais, linguagem humana.
+      </p>
+      <div class="hero-actions" data-aos="fade-up" data-aos-delay="300" data-aos-duration="600">
+        <button class="btn-primary">Explorar projetos</button>
+        <a href="#como-funciona" class="btn-ghost">Como funciona</a>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <div class="dot-grid"></div>
+      <svg class="dome-watermark" width="380" height="360" viewBox="0 0 120 110" fill="none">
+        <rect x="10" y="88" width="100" height="7" rx="2" fill="#0C2A5E"/>
+        <rect x="18" y="97" width="84" height="6" rx="2" fill="#0C2A5E"/>
+        <circle cx="60" cy="10" r="6" fill="#0C2A5E"/>
+        <circle cx="48" cy="14" r="4" fill="#0C2A5E"/>
+        <circle cx="72" cy="14" r="4" fill="#0C2A5E"/>
+        <path d="M60 18 C30 28 14 55 12 88 L108 88 C106 55 90 28 60 18Z" fill="#0C2A5E"/>
+        <path d="M60 18 L60 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M44 20 C36 35 30 60 29 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M76 20 C84 35 90 60 91 88" stroke="#F0F4FB" stroke-width="2.5"/>
+        <path d="M32 35 C28 50 22 68 18 88" stroke="#F0F4FB" stroke-width="2"/>
+        <path d="M88 35 C92 50 98 68 102 88" stroke="#F0F4FB" stroke-width="2"/>
+      </svg>
+
+      <div class="search-preview" data-aos="fade-left" data-aos-delay="200" data-aos-duration="700">
+        <div class="search-label">buscar projeto</div>
+        <div class="search-box">
+          <span class="search-icon">&#9906;</span>
+          <input type="text" placeholder="tema, numero, deputado..." x-model="busca" />
+        </div>
+        <div class="filters">
+          <template x-for="tema in temas" :key="tema">
+            <div class="chip" :class="{ on: filtrosAtivos.includes(tema) }" @click="toggleFiltro(tema)" x-text="tema"></div>
+          </template>
+        </div>
+        <div class="results-count" x-show="busca.length > 0 || filtrosAtivos.length > 0" x-cloak>
+          <span x-text="projetosFiltrados.length"></span> projeto(s) encontrado(s)
+        </div>
+      </div>
+
+      <template x-for="pl in projetosFiltrados.slice(0, 2)" :key="pl.numero">
+        <div class="rcard">
+          <div class="rcard-head">
+            <div class="rnum" x-text="pl.numero"></div>
+            <div class="badge" :class="pl.badgeClass" x-text="pl.status"></div>
+          </div>
+          <div class="rtitle" x-text="pl.titulo"></div>
+          <div class="rmeta">
+            <span x-text="pl.autor"></span>
+            <span x-text="pl.data"></span>
+          </div>
+        </div>
+      </template>
+
+      <div class="no-results" x-show="projetosFiltrados.length === 0" x-cloak>
+        Nenhum projeto encontrado para essa busca.
+      </div>
+    </div>
+  </section>
+
+  <div class="stats-row">
+    <div class="stat" data-aos="fade-up" data-aos-delay="0"   data-aos-duration="600"><div class="snum">4.2k</div><div class="slabel">Projetos indexados</div></div>
+    <div class="stat" data-aos="fade-up" data-aos-delay="80"  data-aos-duration="600"><div class="snum">70</div>  <div class="slabel">Deputados mapeados</div></div>
+    <div class="stat" data-aos="fade-up" data-aos-delay="160" data-aos-duration="600"><div class="snum">18</div>  <div class="slabel">Temas categorizados</div></div>
+    <div class="stat" data-aos="fade-up" data-aos-delay="240" data-aos-duration="600"><div class="snum">Diario</div><div class="slabel">Atualizacao</div></div>
+  </div>
+
+  <section class="features-section" id="como-funciona">
+    <div class="features-header" data-aos="fade-up" data-aos-duration="600">
+      <div class="section-tag">Como funciona</div>
+      <h2 class="section-title">Simples de usar.<br>Poderoso por baixo.</h2>
+    </div>
+    <div class="features-grid">
+      <div class="feat" data-aos="fade-up" data-aos-delay="0"   data-aos-duration="600">
+        <div class="feat-icon">&#128269;</div><div class="fnum">01</div>
+        <div class="ftitle">Busca que entende voce</div>
+        <div class="fdesc">Pesquise por tema, numero do projeto, deputado ou palavras-chave. Sem precisar saber o codigo exato da ALERJ.</div>
+      </div>
+      <div class="feat" data-aos="fade-up" data-aos-delay="100" data-aos-duration="600">
+        <div class="feat-icon">&#9881;</div><div class="fnum">02</div>
+        <div class="ftitle">Filtros que fazem sentido</div>
+        <div class="fdesc">Filtre por situacao, data, autor, comissao e tema. Veja o que esta em votacao, aprovado ou arquivado.</div>
+      </div>
+      <div class="feat" data-aos="fade-up" data-aos-delay="200" data-aos-duration="600">
+        <div class="feat-icon">&#128225;</div><div class="fnum">03</div>
+        <div class="ftitle">Dados sempre frescos</div>
+        <div class="fdesc">Sincronizacao diaria com o site oficial da ALERJ. O que aconteceu ontem no plenario, voce ve hoje aqui.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-section">
+    <div class="cta-dot-grid"></div>
+    <h2 data-aos="fade-up" data-aos-duration="700">A lei e <em>publica.</em><br>O acesso tambem deveria ser.</h2>
+    <p data-aos="fade-up" data-aos-delay="150" data-aos-duration="700">Explore todos os projetos de lei da Assembleia Legislativa do Rio de Janeiro.</p>
+    <button class="btn-white" data-aos="fade-up" data-aos-delay="250" data-aos-duration="600">Comecar agora</button>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-left"><div class="dot-live"></div>RADARALERJ - Dados publicos, visualizacao melhor</div>
+    <div class="footer-right">Fonte: alerj.rj.gov.br</div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <script>
+    function radarApp() {
+      return {
+        scrolled: false,
+        menuOpen: false,
+        busca: '',
+        filtrosAtivos: [],
+        temas: ['Em votacao', '2024', 'Seguranca', 'Saude', 'Educacao', 'Meio Ambiente', 'Transporte'],
+        projetos: [
+          { numero: 'PL 2847/2024', titulo: 'Institui programa estadual de cameras em viaturas policiais no RJ', status: 'Aprovado', badgeClass: 'ok', autor: 'Dep. Carlos Silva', data: '12 mar 2024', temas: ['Seguranca', 'Em votacao', '2024'] },
+          { numero: 'PL 3012/2024', titulo: 'Regulamentacao do uso de cameras de vigilancia em espacos publicos municipais', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Ana Rocha', data: '28 fev 2024', temas: ['Seguranca', '2024'] },
+          { numero: 'PL 1923/2024', titulo: 'Criacao de novos leitos de UTI em hospitais estaduais do Rio de Janeiro', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Maria Lima', data: '05 jan 2024', temas: ['Saude', 'Em votacao', '2024'] },
+          { numero: 'PL 0874/2024', titulo: 'Programa de reforco escolar nas redes publicas municipais e estaduais', status: 'Aprovado', badgeClass: 'ok', autor: 'Dep. Joao Melo', data: '18 jan 2024', temas: ['Educacao', '2024'] },
+          { numero: 'PL 2201/2024', titulo: 'Criacao de corredores de onibus expressos na Baixada Fluminense', status: 'Arquivado', badgeClass: 'arch', autor: 'Dep. Pedro Souza', data: '10 fev 2024', temas: ['Transporte', '2024'] },
+          { numero: 'PL 3301/2024', titulo: 'Protecao de areas de preservacao permanente na Serra dos Orgaos', status: 'Em tramitacao', badgeClass: 'pend', autor: 'Dep. Lucia Verde', data: '22 mar 2024', temas: ['Meio Ambiente', '2024'] },
+        ],
+        get projetosFiltrados() {
+          return this.projetos.filter(pl => {
+            const matchBusca = this.busca.length === 0 ||
+              pl.titulo.toLowerCase().includes(this.busca.toLowerCase()) ||
+              pl.numero.toLowerCase().includes(this.busca.toLowerCase()) ||
+              pl.autor.toLowerCase().includes(this.busca.toLowerCase())
+            const matchFiltros = this.filtrosAtivos.length === 0 ||
+              this.filtrosAtivos.every(f => pl.temas.includes(f))
+            return matchBusca && matchFiltros
+          })
+        },
+        toggleFiltro(tema) {
+          const idx = this.filtrosAtivos.indexOf(tema)
+          if (idx === -1) this.filtrosAtivos.push(tema)
+          else this.filtrosAtivos.splice(idx, 1)
+        },
+        init() {
+          AOS.init({ once: true, offset: 60, easing: 'ease-out-quart' })
+        }
+      }
+    }
+  </script>
+</body>
+</html>
